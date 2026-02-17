@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test SSE - MCP Server Tu Descuento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .disconnect {
+            background: #f44336;
+        }
+        .disconnect:hover {
+            background: #da190b;
+        }
+        #log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        .log-success {
+            color: #4CAF50;
+        }
+        .log-error {
+            color: #f44336;
+        }
+        .log-info {
+            color: #2196F3;
+        }
+        .log-data {
+            color: #FF9800;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test SSE - MCP Server Tu Descuento</h1>
+        
+        <div id="status" class="status disconnected">
+            Estado: Desconectado
+        </div>
+
+        <div>
+            <button id="connectBtn" onclick="connect()">Conectar SSE</button>
+            <button id="disconnectBtn" onclick="disconnect()" class="disconnect" disabled>Desconectar</button>
+            <button onclick="clearLog()">Limpiar Log</button>
+        </div>
+
+        <div id="log"></div>
+    </div>
+
+    <script>
+        let eventSource = null;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(connected) {
+            const statusDiv = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = 'Estado: Conectado ✅';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = 'Estado: Desconectado ❌';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+
+        function connect() {
+            if (eventSource) {
+                log('Ya existe una conexión activa', 'error');
+                return;
+            }
+
+            log('Iniciando conexión SSE...', 'info');
+            
+            eventSource = new EventSource('http://localhost:3000/sse');
+
+            eventSource.onopen = () => {
+                log('Conexión SSE establecida exitosamente', 'success');
+                updateStatus(true);
+            };
+
+            eventSource.onmessage = (event) => {
+                log(`Mensaje recibido: ${event.data}`, 'data');
+            };
+
+            eventSource.onerror = (error) => {
+                log('Error en la conexión SSE', 'error');
+                console.error('SSE Error:', error);
+                disconnect();
+            };
+        }
+
+        function disconnect() {
+            if (!eventSource) {
+                log('No hay conexión activa', 'error');
+                return;
+            }
+
+            log('Cerrando conexión SSE...', 'info');
+            eventSource.close();
+            eventSource = null;
+            updateStatus(false);
+            log('Conexión cerrada', 'success');
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // Limpiar al cerrar la página
+        window.addEventListener('beforeunload', () => {
+            if (eventSource) {
+                eventSource.close();
+            }
+        });
+
+        log('Página cargada. Presiona "Conectar SSE" para iniciar', 'info');
+    </script>
+</body>
+</html>
