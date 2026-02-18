@@ -195,6 +195,7 @@ export class MCPServer {
 
       // Obtener o crear servidor para esta sesión
       let server = this.servers.get(sessionId)
+      const isNewSession = !server
       if (!server) {
         console.log(`📝 Nueva sesión MCP: ${sessionId}`)
         server = this.createMCPServerInstance()
@@ -211,25 +212,31 @@ export class MCPServer {
         // Parsear el body como JSON (viene como texto raw)
         const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
 
-        // Soportar múltiples mensajes separados por newline
-        const messages = body
-          .trim()
-          .split('\n')
-          .filter((line) => line.trim())
-          .map((line) => {
-            try {
-              return JSON.parse(line)
-            } catch (e) {
-              console.error('❌ Error parseando mensaje JSON:', line)
-              return null
-            }
+        // Intentar parsear como objeto único o array
+        let messages: any[]
+        try {
+          const parsed = JSON.parse(body.trim())
+          messages = Array.isArray(parsed) ? parsed : [parsed]
+        } catch (e) {
+          console.error('❌ Error parseando mensaje JSON:', body)
+          return res.status(400).json({
+            jsonrpc: '2.0',
+            error: {
+              code: -32700,
+              message: 'Parse error',
+            },
+            id: null,
           })
-          .filter((msg) => msg !== null)
+        }
 
         console.log(`📨 Recibidos ${messages.length} mensaje(s) (sesión ${sessionId})`)
 
+        // Determinar si hay requests (con id) vs solo notificaciones/respuestas
+        const hasRequests = messages.some((msg) => msg.id !== undefined && msg.method)
+
         // Recopilar todas las respuestas
         const responses: any[] = []
+        let isInitializeResponse = false
 
         // Procesar cada mensaje
         for (const message of messages) {
@@ -240,20 +247,50 @@ export class MCPServer {
           if (response) {
             responses.push(response)
             console.log(`   ✅ Respuesta generada: ${message.method}`)
+
+            // Detectar si es respuesta de initialize
+            if (message.method === 'initialize') {
+              isInitializeResponse = true
+            }
           }
         }
 
-        // Enviar todas las respuestas de una vez
+        // Según especificación MCP Streamable HTTP:
+        // Si solo hay notificaciones/respuestas (sin requests): 202 Accepted sin body
+        // Si hay requests: Content-Type application/json con las respuestas
+
+        if (!hasRequests && responses.length === 0) {
+          // Solo notificaciones - 202 Accepted sin body
+          console.log(`   ℹ️  Solo notificaciones, retornando 202 Accepted`)
+          return res.status(202).end()
+        }
+
+        // Establecer session ID en header si es una nueva sesión y es initialize
+        if (isNewSession && isInitializeResponse) {
+          res.setHeader('Mcp-Session-Id', sessionId)
+          console.log(`   🆔 Session ID establecido: ${sessionId}`)
+        }
+
+        // Enviar respuestas con Content-Type correcto
         if (responses.length === 1) {
           // Una sola respuesta: enviar como objeto JSON
-          res.json(responses[0])
-        } else if (responses.length > 1) {
-          // Múltiples respuestas: enviar como líneas separadas
           res.setHeader('Content-Type', 'application/json')
-          res.send(responses.map((r) => JSON.stringify(r)).join('\n'))
+          res.send(JSON.stringify(responses[0]))
+        } else if (responses.length > 1) {
+          // Múltiples respuestas: enviar como array JSON
+          res.setHeader('Content-Type', 'application/json')
+          res.send(JSON.stringify(responses))
         } else {
-          // Sin respuestas (notificaciones) - enviar 200 OK vacío
-          res.status(200).end()
+          // Sin respuestas pero había requests - error interno
+          console.error('⚠️  Se esperaba respuesta pero no se generó ninguna')
+          res.status(500).json({
+            jsonrpc: '2.0',
+            error: {
+              code: -32603,
+              message: 'Internal error: No response generated',
+            },
+            id: null,
+          })
         }
       } catch (error) {
         console.error('❌ Error en endpoint Streamable HTTP:', error)
