@@ -1,70 +1,38 @@
 import { BaseService } from '@services/base-service.js'
-import type { ApiResponse, Lead, GenericEntityResponse } from '@/types/index.js'
+import type { ApiResponse, CreateLeadDto, CreateLeadResponse } from '@/types/index.js'
 
 /**
  * Servicio para gestionar leads del CRM
  *
- * Endpoints disponibles:
- * - GET /api/leads - Listar leads
- * - GET /api/leads/:id - Obtener lead por ID
- * - POST /api/leads - Crear lead
- * - PUT /api/leads/:id - Actualizar lead
- * - DELETE /api/leads/:id - Eliminar lead
+ * Endpoint disponible:
+ * - POST /api/leads - Crear un nuevo lead
  */
 export class LeadService extends BaseService {
-  private readonly basePath = '/api/leads'
-
   /**
-   * Obtener lista de leads
-   * La respuesta tiene el formato: { leads: Lead[] }
+   * Crear un nuevo lead desde el bot de soporte
+   * Endpoint: POST /api/leads
+   *
+   * Campos requeridos: nombre, telefono, origen
+   * Campos opcionales: numero_documento, email
+   *
+   * Nota: Los campos opcionales vacíos no se envían (undefined/null/string vacío)
    */
-  async getLeads(filters?: { estado?: string; origen?: string }): Promise<ApiResponse<GenericEntityResponse<Lead>>> {
-    const params = filters ? this.buildQueryParams(filters) : undefined
-    return this.get<GenericEntityResponse<Lead>>(this.basePath, params)
-  }
+  async createLead(data: CreateLeadDto): Promise<ApiResponse<CreateLeadResponse>> {
+    // Limpiar campos opcionales vacíos
+    const payload: any = {
+      nombre: data.nombre,
+      telefono: data.telefono,
+      origen: data.origen,
+    }
 
-  /**
-   * Obtener un lead específico por ID
-   */
-  async getLeadById(id: number): Promise<ApiResponse<Lead>> {
-    return this.get<Lead>(`${this.basePath}/${id}`)
-  }
+    // Solo agregar campos opcionales si tienen valor
+    if (data.numero_documento && data.numero_documento.trim() !== '') {
+      payload.numero_documento = data.numero_documento
+    }
+    if (data.email && data.email.trim() !== '') {
+      payload.email = data.email
+    }
 
-  /**
-   * Crear un nuevo lead
-   */
-  async createLead(data: { nombre: string; numero_documento: string; email: string; telefono: string; origen: string; estado?: string }): Promise<ApiResponse<Lead>> {
-    return this.post<Lead>(this.basePath, data)
-  }
-
-  /**
-   * Actualizar un lead existente
-   */
-  async updateLead(id: number, data: Partial<Lead>): Promise<ApiResponse<Lead>> {
-    return this.put<Lead>(`${this.basePath}/${id}`, data)
-  }
-
-  /**
-   * Eliminar un lead
-   */
-  async deleteLead(id: number): Promise<ApiResponse<void>> {
-    return this.delete<void>(`${this.basePath}/${id}`)
-  }
-
-  /**
-   * Buscar leads por email
-   */
-  async findByEmail(email: string): Promise<ApiResponse<Lead>> {
-    return this.get<Lead>(`${this.basePath}/search/email`, { email })
-  }
-
-  /**
-   * Buscar leads por número de documento
-   */
-  async findByDocument(numero_documento: string): Promise<ApiResponse<Lead>> {
-    return this.get<Lead>(`${this.basePath}/search/document`, { numero_documento })
+    return this.post<CreateLeadResponse>('/leads', payload)
   }
 }
-
-// Instancia singleton del servicio
-export const leadService = new LeadService()

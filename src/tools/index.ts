@@ -4,6 +4,7 @@ import { getCategorieseTool, handleGetCategories } from '@tools/sales/categories
 import { getPublicMembershipsTool, handleGetPublicMemberships, getMembershipDiscountsTool, handleGetMembershipDiscounts } from '@tools/sales/memberships.js'
 import { getAlliedCommerceTool, handleGetAlliedCommerce, getAlliedCommercesByCategoryTool, handleGetAlliedCommercesByCategory } from '@tools/sales/allied-commerces.js'
 import { getSupportLogsTool, handleGetSupportLogs, createSupportLogTool, handleCreateSupportLog } from '@tools/documentation/support-bot-log.js'
+import { createLeadTool, handleCreateLead } from '@tools/sales/leads.js'
 
 /**
  * TOOLS DEL SERVIDOR MCP
@@ -44,6 +45,7 @@ export const tools: Tool[] = [
   getAlliedCommercesByCategoryTool,
   getSupportLogsTool,
   createSupportLogTool,
+  createLeadTool,
   // Aquí se agregarán los tools del CRM de TuDescuento
   // Ejemplo:
   // {
@@ -101,6 +103,10 @@ export async function handleToolCall(request: CallToolRequest) {
 
     case 'create_support_log': {
       return await handleCreateSupportLog(args)
+    }
+
+    case 'create_lead': {
+      return await handleCreateLead(args)
     }
 
     // Aquí se agregarán los casos para cada tool

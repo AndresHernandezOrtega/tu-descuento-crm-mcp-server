@@ -21,7 +21,7 @@ export type { LaravelPaginatedResponse, PaginationLink, GenericEntityResponse, A
 export type { AiAgent, AiAgentMetadata, CreateAiAgentDto, UpdateAiAgentDto } from './entities/ai-agent.js'
 
 // Leads
-export type { Lead, CreateLeadDto, UpdateLeadDto } from './entities/lead.js'
+export type { Lead, CreateLeadDto, UpdateLeadDto, CreateLeadResponse } from './entities/lead.js'
 
 // Clientes
 export type { Costumer } from './entities/costumer.js'

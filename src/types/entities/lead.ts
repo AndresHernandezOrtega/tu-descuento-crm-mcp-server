@@ -20,11 +20,18 @@ export interface Lead {
  */
 export interface CreateLeadDto {
   nombre: string
-  numero_documento: string
-  email: string
   telefono: string
   origen: string
-  estado?: string
+  numero_documento?: string
+  email?: string
+}
+
+/**
+ * Respuesta de creación de Lead
+ */
+export interface CreateLeadResponse {
+  message: string
+  lead: Lead
 }
 
 /**
