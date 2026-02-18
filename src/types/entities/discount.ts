@@ -3,17 +3,17 @@ import { Category } from './category'
 export interface Discount {
   id: number
   nombre: string
-  tipo_beneficio: 'PORCENTAJE' | 'PORCENTAJE_VALOR_FIJO'
-  porcentaje: number
+  tipo_beneficio: 'PORCENTAJE' | 'VALOR_FIJO'
+  porcentaje: number | null
   valor_fijo: null | number
   descripcion: string
-  condiciones: string[]
+  condiciones: string | string[]
   activo: boolean
   allied_commerce_id: number
   aplicable?: boolean
   created_at: string
   updated_at: string
-  categories: Category[]
+  categories?: Category[]
 }
 
 export interface DiscountWithPivot {

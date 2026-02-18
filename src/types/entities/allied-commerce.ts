@@ -1,12 +1,12 @@
 import { Discount } from './discount'
 
-interface Commerce {
+export interface AlliedCommerce {
   id: number
   code: string
   razon_social: string
   tipo_persona: string
   numero_identificacion: string
-  digito_verificacion?: string | null
+  digito_verificacion?: number | null
   telefono: string
   email: string
   direccion_domicilio_principal: string
@@ -14,7 +14,8 @@ interface Commerce {
   descripcion: string
   created_at?: string
   updated_at?: string
-  representante_legal: Partial<RepresentanteLegal>
+  representante_legal?: RepresentanteLegal | number
+  users?: UserAlliedCommerce[]
   discounts?: Discount[]
 }
 
@@ -29,4 +30,32 @@ export interface RepresentanteLegal {
   allied_commerce_id: number
   created_at?: string
   updated_at?: string
+}
+
+export interface TypeUser {
+  id: number
+  name: string
+  description: string
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface UserAlliedCommerce {
+  id: number
+  type_user_id: number
+  name: string
+  email: string
+  email_verified_at: string | null
+  created_at: string
+  updated_at: string
+  pivot: {
+    allied_commerce_id: number
+    user_id: number
+  }
+  type_user: TypeUser
+  tokens: any[]
+}
+
+export interface AlliedCommerceResponse {
+  alliedCommerce: AlliedCommerce
 }

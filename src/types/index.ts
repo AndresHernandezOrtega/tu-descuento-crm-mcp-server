@@ -30,7 +30,10 @@ export type { Municipalitie, TypeDocumentIdentification } from './entities/gener
 export type { Membership, CategoryWithPivot, PublicMembershipsResponse } from './entities/membership.js'
 
 // Categorías
-export type { Category } from './entities/category.js'
+export type { Category, CategoryWithAlliedCommerces, CategoryWithAlliedCommercesResponse } from './entities/category.js'
 
 // Descuentos
 export type { Discount, DiscountWithPivot, AlliedCommerceSimple, MembershipDiscountsResponse } from './entities/discount.js'
+
+// Comercios Aliados
+export type { AlliedCommerce, RepresentanteLegal, TypeUser, UserAlliedCommerce, AlliedCommerceResponse } from './entities/allied-commerce.js'
