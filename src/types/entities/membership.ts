@@ -1,3 +1,5 @@
+import { Category } from './category'
+
 export interface Membership {
   id: number
   nombre: string
@@ -5,7 +7,20 @@ export interface Membership {
   meses_duracion: number
   numero_beneficiarios: number
   color: string
-  created_at: Date
-  updated_at: Date
+  is_venta_publico: boolean
+  created_at: string
+  updated_at: string
   precio_membresia: number
+  categories?: CategoryWithPivot[]
+}
+
+export interface CategoryWithPivot extends Category {
+  pivot: {
+    membership_id: number
+    category_id: number
+  }
+}
+
+export interface PublicMembershipsResponse {
+  memberships: Membership[]
 }

@@ -1,6 +1,7 @@
 import type { Tool, CallToolRequest } from '@modelcontextprotocol/sdk/types.js'
 import { getCostumerByIdentificationTool, handleGetCostumerByIdentification } from '@tools/costumers/costumer-information.js'
 import { getCategorieseTool, handleGetCategories } from '@tools/sales/categories.js'
+import { getPublicMembershipsTool, handleGetPublicMemberships, getMembershipDiscountsTool, handleGetMembershipDiscounts } from '@tools/sales/memberships.js'
 
 /**
  * TOOLS DEL SERVIDOR MCP
@@ -35,6 +36,8 @@ import { getCategorieseTool, handleGetCategories } from '@tools/sales/categories
 export const tools: Tool[] = [
   getCostumerByIdentificationTool,
   getCategorieseTool,
+  getPublicMembershipsTool,
+  getMembershipDiscountsTool,
   // Aquí se agregarán los tools del CRM de TuDescuento
   // Ejemplo:
   // {
@@ -68,6 +71,14 @@ export async function handleToolCall(request: CallToolRequest) {
 
     case 'get_categories': {
       return await handleGetCategories()
+    }
+
+    case 'get_public_memberships': {
+      return await handleGetPublicMemberships()
+    }
+
+    case 'get_membership_discounts': {
+      return await handleGetMembershipDiscounts(args)
     }
 
     // Aquí se agregarán los casos para cada tool
