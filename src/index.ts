@@ -1,4 +1,4 @@
-import { MCPServer } from './server.js'
+import { MCPServer } from '@/server.js'
 
 async function main() {
   try {

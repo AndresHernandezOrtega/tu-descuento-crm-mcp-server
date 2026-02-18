@@ -14,7 +14,16 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["./*"],
+      "@services/*": ["./services/*"],
+      "@config/*": ["./config/*"],
+      "@tools/*": ["./tools/*"],
+      "@prompts/*": ["./prompts/*"],
+      "@resources/*": ["./resources/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

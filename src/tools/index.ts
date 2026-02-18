@@ -1,4 +1,6 @@
 import type { Tool, CallToolRequest } from '@modelcontextprotocol/sdk/types.js'
+import { getCostumerByIdentificationTool, handleGetCostumerByIdentification } from '@tools/costumers/costumer-information.js'
+import { getCategorieseTool, handleGetCategories } from '@tools/sales/categories.js'
 
 /**
  * TOOLS DEL SERVIDOR MCP
@@ -31,6 +33,8 @@ import type { Tool, CallToolRequest } from '@modelcontextprotocol/sdk/types.js'
 
 // Array de tools disponibles
 export const tools: Tool[] = [
+  getCostumerByIdentificationTool,
+  getCategorieseTool,
   // Aquí se agregarán los tools del CRM de TuDescuento
   // Ejemplo:
   // {
@@ -57,6 +61,15 @@ export async function handleToolCall(request: CallToolRequest) {
   const { name, arguments: args } = request.params
 
   switch (name) {
+    case 'get_costumer_by_identification': {
+      const { numero_identificacion } = args as { numero_identificacion: string }
+      return await handleGetCostumerByIdentification(numero_identificacion)
+    }
+
+    case 'get_categories': {
+      return await handleGetCategories()
+    }
+
     // Aquí se agregarán los casos para cada tool
     // Ejemplo:
     // case 'get_ai_agents': {

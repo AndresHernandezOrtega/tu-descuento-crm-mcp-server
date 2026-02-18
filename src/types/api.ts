@@ -35,14 +35,14 @@ export interface PaginationLink {
  * Ejemplo: { leads: Lead[] } o { clientes: Cliente[] }
  */
 export interface GenericEntityResponse<T> {
-  [key: string]: T[]
+  [key: string]: T
 }
 
 /**
  * Respuesta de error de la API
  */
 export interface ApiErrorResponse {
-  error: string
+  error?: string
   message: string
   details?: any
 }

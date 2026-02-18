@@ -10,10 +10,10 @@ import {
 import express, { Request, Response } from 'express'
 import cors from 'cors'
 import { randomUUID } from 'crypto'
-import { config } from './config/config.js'
-import { tools, handleToolCall } from './tools/index.js'
-import { prompts, handleGetPrompt } from './prompts/index.js'
-import { resources, handleReadResource } from './resources/index.js'
+import { config } from '@config/config.js'
+import { tools, handleToolCall } from '@tools/index.js'
+import { prompts, handleGetPrompt } from '@prompts/index.js'
+import { resources, handleReadResource } from '@resources/index.js'
 
 export class MCPServer {
   private app: express.Application

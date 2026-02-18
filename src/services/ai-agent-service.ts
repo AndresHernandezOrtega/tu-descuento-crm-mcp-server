@@ -1,5 +1,5 @@
-import { BaseService } from './base-service.js'
-import type { ApiResponse, AiAgent, LaravelPaginatedResponse } from '../types/index.js'
+import { BaseService } from '@services/base-service.js'
+import type { ApiResponse, AiAgent, LaravelPaginatedResponse } from '@/types/index.js'
 
 /**
  * Servicio para gestionar agentes de IA del CRM

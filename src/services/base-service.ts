@@ -1,5 +1,5 @@
-import { ApiClient } from './api-client.js'
-import type { ApiResponse } from '../types/index.js'
+import { ApiClient } from '@services/api-client.js'
+import type { ApiResponse } from '@/types/index.js'
 
 /**
  * Clase base para todos los servicios del CRM

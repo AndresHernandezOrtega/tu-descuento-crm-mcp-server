@@ -22,3 +22,12 @@ export type { AiAgent, AiAgentMetadata, CreateAiAgentDto, UpdateAiAgentDto } fro
 
 // Leads
 export type { Lead, CreateLeadDto, UpdateLeadDto } from './entities/lead.js'
+
+// Clientes
+export type { Costumer } from './entities/costumer.js'
+export type { Contract } from './entities/contract.js'
+export type { Municipalitie, TypeDocumentIdentification } from './entities/generic-entities.js'
+export type { Membership } from './entities/membership.js'
+
+// Categorías
+export type { Category } from './entities/category.js'

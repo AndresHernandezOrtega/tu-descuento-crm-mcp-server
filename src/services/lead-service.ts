@@ -1,5 +1,5 @@
-import { BaseService } from './base-service.js'
-import type { ApiResponse, Lead, GenericEntityResponse } from '../types/index.js'
+import { BaseService } from '@services/base-service.js'
+import type { ApiResponse, Lead, GenericEntityResponse } from '@/types/index.js'
 
 /**
  * Servicio para gestionar leads del CRM

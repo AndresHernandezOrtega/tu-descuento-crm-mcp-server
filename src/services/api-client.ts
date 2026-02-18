@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios'
-import { config } from '../config/config.js'
-import type { ApiResponse, ApiErrorResponse } from '../types/index.js'
+import { config } from '@config/config.js'
+import type { ApiResponse, ApiErrorResponse } from '@/types/index.js'
 
 /**
  * Cliente HTTP base para interactuar con la API del CRM de TuDescuento
