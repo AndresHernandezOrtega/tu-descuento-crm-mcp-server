@@ -1,18 +1,27 @@
 import dotenv from 'dotenv'
 
-// Cargar variables de entorno desde archivo .env (solo en desarrollo)
-// En producción (Docker), las variables vienen de docker-compose.yml o sistema
-dotenv.config()
+// Cargar variables de entorno desde archivo .env (solo en desarrollo local)
+// En producción (Docker), las variables vienen de docker-compose.yml environment
+// dotenv.config() no hace nada si el archivo no existe, las variables del sistema siguen disponibles
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config()
+}
 
-// Validar variables críticas
+// Validar variables críticas DESPUÉS de intentar cargar .env
 const requiredEnvVars = ['TUDESCUENTO_API_URL', 'TUDESCUENTO_API_KEY']
 const missingVars = requiredEnvVars.filter((varName) => !process.env[varName])
 
 if (missingVars.length > 0) {
   console.error('❌ ERROR: Variables de entorno requeridas no encontradas:')
   missingVars.forEach((varName) => console.error(`   - ${varName}`))
-  console.error('\n📋 En Docker, asegúrate de configurar estas variables en docker-compose.yml')
-  console.error('📋 En desarrollo local, crea un archivo .env con estas variables')
+  console.error('\n📋 En Docker: Configurar estas variables en docker-compose.yml o como variables de sistema')
+  console.error('📋 En desarrollo local: Crear archivo .env con estas variables')
+  console.error(
+    '\n🔍 Variables actuales disponibles:',
+    Object.keys(process.env)
+      .filter((k) => k.startsWith('TUDESCUENTO'))
+      .join(', ') || 'ninguna',
+  )
   process.exit(1)
 }
 
@@ -35,13 +44,13 @@ export const config = {
   corsOrigins: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim()) : ['*'],
 } as const
 
-// Log de configuración (sin exponer API_KEY)
-if (process.env.NODE_ENV !== 'production') {
-  console.log('⚙️  Configuración cargada:')
-  console.log(`   PORT: ${config.port}`)
-  console.log(`   API_URL: ${config.tuDescuentoApiUrl}`)
-  console.log(`   API_KEY: ${config.tuDescuentoApiKey.substring(0, 10)}...`)
-  console.log(`   CORS_ORIGINS: ${config.corsOrigins.join(', ')}`)
-}
+// Log de configuración cargada (sin exponer API_KEY completa)
+console.log('✅ Configuración cargada exitosamente:')
+console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'development'}`)
+console.log(`   PORT: ${config.port}`)
+console.log(`   API_URL: ${config.tuDescuentoApiUrl}`)
+console.log(`   API_KEY: ${config.tuDescuentoApiKey.substring(0, 15)}...`)
+console.log(`   CORS_ORIGINS: ${config.corsOrigins.join(', ')}`)
+console.log(`   LOG_LEVEL: ${config.logLevel}`)
 
 export type Config = typeof config
