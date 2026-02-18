@@ -18,7 +18,6 @@ import { resources, handleReadResource } from '@resources/index.js'
 export class MCPServer {
   private app: express.Application
   private servers: Map<string, Server> = new Map()
-  private sseConnections: Map<string, Response> = new Map() // Conexiones SSE activas por sessionId
 
   constructor() {
     this.app = express()
@@ -27,11 +26,13 @@ export class MCPServer {
   }
 
   private setupMiddleware(): void {
-    this.app.use(express.json())
+    // Middleware para raw body (necesario para streaming)
+    this.app.use(express.text({ type: 'application/json', limit: '10mb' }))
     this.app.use(
       cors({
         origin: config.corsOrigins,
         credentials: true,
+        exposedHeaders: ['Content-Type', 'Transfer-Encoding'],
       }),
     )
   }
@@ -82,23 +83,95 @@ export class MCPServer {
   }
 
   /**
-   * Envía una respuesta JSON-RPC a través de SSE
+   * Procesa un mensaje JSON-RPC y retorna la respuesta
    */
-  private sendSSEResponse(sessionId: string, data: any): boolean {
-    const sseConnection = this.sseConnections.get(sessionId)
-    if (!sseConnection) {
-      console.warn(`⚠️  No hay conexión SSE para sesión ${sessionId}`)
-      return false
-    }
-
+  private async processMessage(message: any): Promise<any> {
     try {
-      sseConnection.write('event: message\n')
-      sseConnection.write(`data: ${JSON.stringify(data)}\n\n`)
-      return true
+      // Las notificaciones (sin id) no requieren respuesta
+      if (!message.id) {
+        console.log(`🔔 Notificación recibida: ${message.method}`)
+        return null
+      }
+
+      //  Para la inicialización, respondemos con las capacidades
+      if (message.method === 'initialize') {
+        return {
+          jsonrpc: '2.0',
+          id: message.id,
+          result: {
+            protocolVersion: '2024-11-05',
+            serverInfo: {
+              name: config.mcpServerName,
+              version: config.mcpServerVersion,
+            },
+            capabilities: {
+              tools: {},
+              prompts: {},
+              resources: {},
+            },
+          },
+        }
+      } else if (message.method === 'tools/list') {
+        return {
+          jsonrpc: '2.0',
+          id: message.id,
+          result: { tools },
+        }
+      } else if (message.method === 'tools/call') {
+        const result = await handleToolCall({ params: message.params } as any)
+        return {
+          jsonrpc: '2.0',
+          id: message.id,
+          result,
+        }
+      } else if (message.method === 'prompts/list') {
+        return {
+          jsonrpc: '2.0',
+          id: message.id,
+          result: { prompts },
+        }
+      } else if (message.method === 'prompts/get') {
+        const result = await handleGetPrompt({ params: message.params } as any)
+        return {
+          jsonrpc: '2.0',
+          id: message.id,
+          result,
+        }
+      } else if (message.method === 'resources/list') {
+        return {
+          jsonrpc: '2.0',
+          id: message.id,
+          result: { resources },
+        }
+      } else if (message.method === 'resources/read') {
+        const result = await handleReadResource({ params: message.params } as any)
+        return {
+          jsonrpc: '2.0',
+          id: message.id,
+          result,
+        }
+      } else {
+        // Método no soportado
+        return {
+          jsonrpc: '2.0',
+          id: message.id,
+          error: {
+            code: -32601,
+            message: `Method not found: ${message.method}`,
+          },
+        }
+      }
     } catch (error) {
-      console.error(`❌ Error enviando respuesta SSE:`, error)
-      this.sseConnections.delete(sessionId)
-      return false
+      console.error('❌ Error procesando mensaje MCP:', error)
+      return {
+        jsonrpc: '2.0',
+        error: {
+          code: -32603,
+          message: 'Internal error',
+          data: error instanceof Error ? error.message : String(error),
+        },
+        id: message.id,
+      }
     }
   }
 
@@ -111,197 +184,86 @@ export class MCPServer {
         version: config.mcpServerVersion,
         timestamp: new Date().toISOString(),
         activeSessions: this.servers.size,
-        activeSSEConnections: this.sseConnections.size,
       })
     })
 
-    // Endpoint SSE para recibir notificaciones del servidor (GET)
-    this.app.get('/mcp', (req: Request, res: Response) => {
+    // Endpoint HTTP Streamable para MCP
+    this.app.post('/mcp', async (req: Request, res: Response) => {
       const sessionId = (req.headers['mcp-session-id'] as string) || randomUUID()
 
-      console.log(`🔗 Cliente SSE conectado (sesión ${sessionId})`)
+      console.log(`🔗 Cliente HTTP Streamable conectado (sesión ${sessionId})`)
 
-      // Configurar headers para SSE
-      res.setHeader('Content-Type', 'text/event-stream')
-      res.setHeader('Cache-Control', 'no-cache')
+      // Configurar headers para HTTP streaming
+      res.setHeader('Content-Type', 'application/json')
+      res.setHeader('Transfer-Encoding', 'chunked')
       res.setHeader('Connection', 'keep-alive')
-      res.setHeader('mcp-session-id', sessionId)
-      res.setHeader('Access-Control-Allow-Origin', '*')
-      res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id')
+      res.setHeader('Cache-Control', 'no-cache')
       res.setHeader('X-Accel-Buffering', 'no')
 
-      // Almacenar conexión SSE para enviar respuestas desde POST
-      this.sseConnections.set(sessionId, res)
+      // Obtener o crear servidor para esta sesión
+      let server = this.servers.get(sessionId)
+      if (!server) {
+        console.log(`📝 Nueva sesión MCP: ${sessionId}`)
+        server = this.createMCPServerInstance()
+        this.servers.set(sessionId, server)
+      }
 
-      // Enviar un mensaje inicial para confirmar la conexión
-      res.write('event: connected\n')
-      res.write(`data: ${JSON.stringify({ sessionId })}\n\n`)
-
-      // Keep-alive ping cada 15 segundos
-      const keepAlive = setInterval(() => {
-        res.write(': ping\n\n')
-      }, 15000)
-
-      // Limpiar cuando el cliente se desconecta
-      req.on('close', () => {
-        clearInterval(keepAlive)
-        this.sseConnections.delete(sessionId)
-        console.log(`🔌 Cliente SSE desconectado (sesión ${sessionId})`)
-      })
-    })
-
-    // Endpoint principal para MCP (compatible con clientes HTTP+POST)
-    this.app.post('/mcp', async (req: Request, res: Response) => {
       try {
-        const sessionId = (req.headers['mcp-session-id'] as string) || randomUUID()
-        const message = req.body
+        // Parsear el body como JSON (viene como texto raw)
+        const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
 
-        console.log(`📨 Mensaje recibido (sesión ${sessionId}):`, message.method || 'notification')
-
-        // Verificar que haya una conexión SSE activa
-        const hasSSEConnection = this.sseConnections.has(sessionId)
-
-        if (!hasSSEConnection && message.id) {
-          // Si no hay conexión SSE y se espera respuesta, responder con error
-          return res.status(400).json({
-            jsonrpc: '2.0',
-            id: message.id,
-            error: {
-              code: -32000,
-              message: 'No active SSE connection. Please establish GET /mcp connection first.',
-            },
+        // Soportar múltiples mensajes separados por newline
+        const messages = body
+          .trim()
+          .split('\n')
+          .filter((line) => line.trim())
+          .map((line) => {
+            try {
+              return JSON.parse(line)
+            } catch (e) {
+              console.error('❌ Error parseando mensaje JSON:', line)
+              return null
+            }
           })
-        }
+          .filter((msg) => msg !== null)
 
-        // Obtener o crear servidor para esta sesión
-        let server = this.servers.get(sessionId)
-        if (!server) {
-          console.log(`📝 Nueva sesión MCP: ${sessionId}`)
-          server = this.createMCPServerInstance()
-          this.servers.set(sessionId, server)
-        }
+        console.log(`📨 Recibidos ${messages.length} mensaje(s) (sesión ${sessionId})`)
 
-        res.setHeader('mcp-session-id', sessionId)
+        // Procesar cada mensaje y enviar respuestas
+        for (const message of messages) {
+          console.log(`   → Procesando: ${message.method || 'notification'}`)
 
-        // Las notificaciones (sin id) no requieren respuesta
-        if (!message.id) {
-          console.log(`🔔 Notificación recibida: ${message.method}`)
-          res.status(202).end()
-          return
-        }
+          const response = await this.processMessage(message)
 
-        // Responder 202 Accepted inmediatamente (procesamiento asíncrono)
-        res.status(202).json({
-          accepted: true,
-          sessionId: sessionId,
-          message: 'Request accepted, response will be sent via SSE',
-        })
-
-        // Procesar request asíncronamente y enviar respuesta por SSE
-        setImmediate(async () => {
-          try {
-            let responseData: any
-
-            //  Para la inicialización, respondemos con las capacidades
-            if (message.method === 'initialize') {
-              responseData = {
-                jsonrpc: '2.0',
-                id: message.id,
-                result: {
-                  protocolVersion: '2024-11-05',
-                  serverInfo: {
-                    name: config.mcpServerName,
-                    version: config.mcpServerVersion,
-                  },
-                  capabilities: {
-                    tools: {},
-                    prompts: {},
-                    resources: {},
-                  },
-                },
-              }
-            } else if (message.method === 'tools/list') {
-              responseData = {
-                jsonrpc: '2.0',
-                id: message.id,
-                result: { tools },
-              }
-            } else if (message.method === 'tools/call') {
-              const result = await handleToolCall({ params: message.params } as any)
-              responseData = {
-                jsonrpc: '2.0',
-                id: message.id,
-                result,
-              }
-            } else if (message.method === 'prompts/list') {
-              responseData = {
-                jsonrpc: '2.0',
-                id: message.id,
-                result: { prompts },
-              }
-            } else if (message.method === 'prompts/get') {
-              const result = await handleGetPrompt({ params: message.params } as any)
-              responseData = {
-                jsonrpc: '2.0',
-                id: message.id,
-                result,
-              }
-            } else if (message.method === 'resources/list') {
-              responseData = {
-                jsonrpc: '2.0',
-                id: message.id,
-                result: { resources },
-              }
-            } else if (message.method === 'resources/read') {
-              const result = await handleReadResource({ params: message.params } as any)
-              responseData = {
-                jsonrpc: '2.0',
-                id: message.id,
-                result,
-              }
-            } else {
-              // Método no soportado
-              responseData = {
-                jsonrpc: '2.0',
-                id: message.id,
-                error: {
-                  code: -32601,
-                  message: `Method not found: ${message.method}`,
-                },
-              }
-            }
-
-            // Enviar respuesta por SSE
-            const sent = this.sendSSEResponse(sessionId, responseData)
-            if (sent) {
-              console.log(`✅ Respuesta enviada por SSE (sesión ${sessionId}, método ${message.method})`)
-            } else {
-              console.error(`❌ No se pudo enviar respuesta por SSE (sesión ${sessionId})`)
-            }
-          } catch (error) {
-            console.error('❌ Error procesando mensaje MCP:', error)
-            this.sendSSEResponse(sessionId, {
-              jsonrpc: '2.0',
-              error: {
-                code: -32603,
-                message: 'Internal error',
-                data: error instanceof Error ? error.message : String(error),
-              },
-              id: message.id,
-            })
+          if (response) {
+            // Enviar respuesta como línea JSON seguida de newline
+            res.write(JSON.stringify(response) + '\n')
+            console.log(`   ✅ Respuesta enviada: ${message.method}`)
           }
+        }
+
+        // Cerrar la conexión después de procesar todos los mensajes
+        res.end()
+
+        // Limpiar cuando el cliente se desconecta
+        req.on('close', () => {
+          this.servers.delete(sessionId)
+          console.log(`🔌 Cliente desconectado (sesión ${sessionId})`)
         })
       } catch (error) {
-        console.error('❌ Error en endpoint POST:', error)
-        res.status(500).json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32603,
-            message: 'Internal error',
-            data: error instanceof Error ? error.message : String(error),
-          },
-          id: req.body.id || null,
-        })
+        console.error('❌ Error en endpoint Streamable HTTP:', error)
+        res.write(
+          JSON.stringify({
+            jsonrpc: '2.0',
+            error: {
+              code: -32603,
+              message: 'Internal error',
+              data: error instanceof Error ? error.message : String(error),
+            },
+            id: null,
+          }) + '\n',
+        )
+        res.end()
       }
     })
   }
@@ -310,17 +272,20 @@ export class MCPServer {
     return new Promise((resolve) => {
       this.app.listen(config.port, () => {
         console.log(`🚀 MCP Server iniciado en puerto ${config.port}`)
-        console.log(`📡 MCP endpoint GET (SSE): http://localhost:${config.port}/mcp`)
-        console.log(`📡 MCP endpoint POST: http://localhost:${config.port}/mcp`)
+        console.log(`📡 MCP endpoint: http://localhost:${config.port}/mcp`)
         console.log(`❤️  Health check: http://localhost:${config.port}/health`)
         console.log(``)
-        console.log(`Transporte: HTTP+SSE (Server-Sent Events)`)
-        console.log(`Compatible con n8n MCP Client y otros clientes HTTP Streameable`)
+        console.log(`Transporte: Streamable HTTP (Chunked Transfer Encoding)`)
+        console.log(`Compatible con n8n MCP Client y otros clientes MCP estándar`)
         console.log(``)
         console.log(`📝 Flujo de conexión:`)
-        console.log(`   1. GET /mcp → Establecer conexión SSE (recibir sessionId)`)
-        console.log(`   2. POST /mcp → Enviar comandos (usar sessionId en header)`)
-        console.log(`   3. Respuestas → Recibidas por SSE como eventos 'message'`)
+        console.log(`   1. POST /mcp → Enviar mensaje JSON-RPC`)
+        console.log(`   2. Respuestas → Recibidas en el mismo stream HTTP (line-delimited JSON)`)
+        console.log(`   3. Múltiples requests → Enviar múltiples líneas JSON en el mismo POST`)
+        console.log(``)
+        console.log(`⚙️  Configuración:`)
+        console.log(`   • CORS Origins: ${config.corsOrigins.join(', ')}`)
+        console.log(`   • API URL: ${config.tuDescuentoApiUrl}`)
         resolve()
       })
     })

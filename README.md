@@ -4,7 +4,7 @@ Servidor MCP (Model Context Protocol) para el chatbot de Tu Descuento Colombia. 
 
 ## 🚀 Características
 
-- **Transporte HTTP Streameable (SSE)**: Compatible con n8n y otros sistemas de automatización
+- **Transporte Streamable HTTP**: Compatible con n8n y otros sistemas de automatización MCP estándar
 - **Tools**: Herramientas para buscar beneficios, servicios y obtener información detallada
 - **Prompts**: Templates predefinidos para casos de uso comunes
 - **Resources**: Acceso a información estática como categorías y proveedores
@@ -156,22 +156,33 @@ Endpoint de salud del servidor.
 }
 ```
 
-### `GET /sse`
+### `POST /mcp`
 
-Endpoint SSE para conexión MCP desde n8n u otros clientes.
+Endpoint principal MCP con transporte Streamable HTTP. Recibe mensajes JSON-RPC y devuelve respuestas usando chunked transfer encoding.
 
-### `POST /message`
+**Request:**
 
-Endpoint para enviar mensajes al servidor MCP (usado internamente por SSE).
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/list"
+}
+```
+
+**Response:**
+
+```json
+{"jsonrpc":"2.0","id":1,"result":{"tools":[...]}}
+```
 
 ## 🔗 Integración con n8n
 
-1. En n8n, usa el nodo HTTP Request
-2. Configura la URL: `http://localhost:3000/sse`
-3. Método: GET
-4. Headers: `Accept: text/event-stream`
+1. En n8n, usa el nodo **MCP Client**
+2. Configura Transport Type: **Streamable HTTP**
+3. URL: `http://localhost:3000/mcp`
 
-Para enviar comandos, usa POST a `/message` con el formato MCP apropiado.
+Para más detalles, consulta [N8N_CONNECTION_GUIDE.md](N8N_CONNECTION_GUIDE.md)
 
 ## 🌍 Variables de Entorno
 

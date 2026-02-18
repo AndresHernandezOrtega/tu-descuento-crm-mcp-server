@@ -1,6 +1,6 @@
 # 🔌 Guía de Conexión con n8n MCP Client
 
-Esta guía explica cómo conectar el servidor MCP de Tu Descuento con n8n usando el nodo **MCP Client** con transporte **HTTP+SSE (Streameable)**.
+Esta guía explica cómo conectar el servidor MCP de Tu Descuento con n8n usando el nodo **MCP Client** con transporte **Streamable HTTP**.
 
 ## 📋 Requisitos Previos
 
@@ -8,36 +8,32 @@ Esta guía explica cómo conectar el servidor MCP de Tu Descuento con n8n usando
 2. ✅ n8n con el nodo **MCP Client** disponible
 3. ✅ Conexión de red entre n8n y el servidor MCP
 
-## 🔄 Flujo de Comunicación HTTP+SSE
+## 🔄 Flujo de Comunicación Streamable HTTP
 
 ```
 ┌─────────┐                    ┌──────────────┐
 │   n8n   │                    │  MCP Server  │
 └────┬────┘                    └──────┬───────┘
      │                                │
-     │ 1. GET /mcp (SSE)              │
+     │ POST /mcp                      │
+     │ Body: JSON-RPC request         │
      │──────────────────────────────>│
      │                                │
-     │ event: connected               │
-     │ data: {"sessionId": "uuid"}    │
+     │ HTTP 200 OK                    │
+     │ Transfer-Encoding: chunked     │
+     │ Body: JSON-RPC response        │
      │<──────────────────────────────│
      │                                │
-     │ 2. POST /mcp                   │
-     │    Header: mcp-session-id      │
-     │    Body: JSON-RPC request      │
-     │──────────────────────────────>│
-     │                                │
-     │ HTTP 202 Accepted              │
-     │<──────────────────────────────│
-     │                                │
-     │ 3. event: message              │
-     │    data: JSON-RPC response     │
-     │<──────────────────────────────│ (via SSE)
-     │                                │
-     │ 4. : ping (keep-alive)         │
-     │<──────────────────────────────│ (cada 15s)
+     │ Connection closes              │
      └────────────────────────────────┘
 ```
+
+**Características:**
+
+- ✅ Una sola conexión HTTP POST
+- ✅ Respuestas enviadas con chunked transfer encoding
+- ✅ Conexión se cierra después de la respuesta
+- ✅ Soporte para múltiples mensajes en una petición (batch)
 
 ## ⚙️ Configuración en n8n
 
@@ -49,25 +45,22 @@ Esta guía explica cómo conectar el servidor MCP de Tu Descuento con n8n usando
 ### Paso 2: Configuración del Transporte
 
 ```yaml
-Transport Type: HTTP+SSE (Streameable)
-Base URL: http://tu-servidor:3000
-Endpoint Path: /mcp
+Transport Type: Streamable HTTP
+Base URL: http://tu-servidor:3000/mcp
 ```
 
 **Ejemplo con servidor local:**
 
 ```yaml
-Transport Type: HTTP+SSE
-Base URL: http://localhost:3000
-Endpoint Path: /mcp
+Transport Type: Streamable HTTP
+Base URL: http://localhost:3000/mcp
 ```
 
 **Ejemplo con servidor en producción:**
 
 ```yaml
-Transport Type: HTTP+SSE
-Base URL: https://mcp.tudescuento.com.co
-Endpoint Path: /mcp
+Transport Type: Streamable HTTP
+Base URL: https://mcp.tudescuento.com.co/mcp
 ```
 
 ### Paso 3: Headers (Opcionales)
@@ -155,7 +148,7 @@ Una vez conectado, puedes usar cualquiera de estos comandos MCP:
 }
 ```
 
-**Respuesta esperada (por SSE):**
+**Respuesta esperada (streaming):**
 
 ```json
 {
@@ -206,8 +199,7 @@ curl http://localhost:3000/health
   "server": "tudescuento-mcp-server",
   "version": "1.0.0",
   "timestamp": "2026-02-18T12:00:00.000Z",
-  "activeSessions": 1,
-  "activeSSEConnections": 1
+  "activeSessions": 1
 }
 ```
 
@@ -216,21 +208,24 @@ curl http://localhost:3000/health
 Los logs mostrarán:
 
 ```
-🔗 Cliente SSE conectado (sesión uuid-aqui)
-📨 Mensaje recibido (sesión uuid-aqui): tools/list
-✅ Respuesta enviada por SSE (sesión uuid-aqui, método tools/list)
+🔗 Cliente HTTP Streamable conectado (sesión uuid-aqui)
+📝 Nueva sesión MCP: uuid-aqui
+📨 Recibidos 1 mensaje(s) (sesión uuid-aqui)
+   → Procesando: tools/list
+   ✅ Respuesta enviada: tools/list
 ```
 
 ## 🐛 Troubleshooting
 
-### ❌ Error: "No active SSE connection"
+### ❌ Error: "Connection refused" o "Timeout"
 
-**Causa:** n8n intentó enviar un POST sin establecer primero la conexión SSE.
+**Causa:** El servidor MCP no está accesible desde n8n.
 
 **Solución:**
 
-1. Verificar que el nodo MCP Client está configurado con transporte **HTTP+SSE**
-2. Reiniciar el workflow en n8n para establecer nueva conexión
+1. Verificar que el nodo MCP Client está configurado con transporte **Streamable HTTP**
+2. Verificar que la URL es correcta (ej: `http://localhost:3000/mcp`)
+3. Reiniciar el workflow en n8n para establecer nueva conexión
 
 ### ❌ Error: "Connection timeout"
 
@@ -258,11 +253,14 @@ Reiniciar servidor:
 docker-compose restart mcp-server
 ```
 
-### ⚠️ Conexión se desconecta frecuentemente
+### ⚠️ Respuestas lentas
 
-**Causa:** Proxy reverse o firewall cerrando conexiones SSE.
+**Causa:** API externa tarda en responder o problemas de red.
 
-**Solución:** Configurar timeout en el proxy (Nginx):
+**Solución:**
+
+1. Verificar logs del servidor para identificar cuál tool está siendo lento
+2. Configurar timeout en el proxy (Nginx) si aplica:
 
 ```nginx
 location /mcp {
@@ -280,8 +278,8 @@ location /mcp {
 Nodes:
   1. Trigger (Manual)
   2. MCP Client
-     - Transport: HTTP+SSE
-     - URL: http://localhost:3000
+     - Transport: Streamable HTTP
+     - URL: http://localhost:3000/mcp
      - Method: tools/call
      - Tool Name: get_public_memberships
      - Arguments: {}
@@ -300,8 +298,8 @@ Nodes:
   2. Set Variable
      - identificacion: {{$json.body.id}}
   3. MCP Client
-     - Transport: HTTP+SSE
-     - URL: http://localhost:3000
+     - Transport: Streamable HTTP
+     - URL: http://localhost:3000/mcp
      - Method: tools/call
      - Tool Name: get_costumer_by_identification
      - Arguments:
@@ -322,5 +320,6 @@ Si encuentras problemas:
 
 1. Revisar logs del servidor: `docker-compose logs -f mcp-server`
 2. Verificar healthcheck: `curl http://localhost:3000/health`
-3. Verificar conexiones activas en logs: buscar "Cliente SSE conectado"
-4. Contactar equipo de desarrollo con logs completos
+3. Verificar conexiones activas en logs: buscar "Cliente HTTP Streamable conectado"
+4. Probar manualmente con curl: `curl -X POST http://localhost:3000/mcp -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`
+5. Contactar equipo de desarrollo con logs completos
