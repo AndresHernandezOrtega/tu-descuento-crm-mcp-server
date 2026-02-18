@@ -37,3 +37,6 @@ export type { Discount, DiscountWithPivot, AlliedCommerceSimple, MembershipDisco
 
 // Comercios Aliados
 export type { AlliedCommerce, RepresentanteLegal, TypeUser, UserAlliedCommerce, AlliedCommerceResponse } from './entities/allied-commerce.js'
+
+// Soporte y Documentación
+export type { SupportLog, User, SupportLogsResponse, CreateOrUpdateSupportLogDto, CreateSupportLogResponse } from './entities/support-logs.js'
