@@ -1,9 +1,9 @@
 # Dependencies
 node_modules/
 npm-debug.log
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
+# Mantener package-lock.json para builds reproducibles
 
 # Build
 dist/
