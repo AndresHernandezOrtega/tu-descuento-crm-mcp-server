@@ -7,8 +7,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Instalar dependencias
-RUN npm ci
+# Instalar dependencias (usar npm install si no hay package-lock.json)
+RUN npm install --production=false
 
 # Copiar código fuente
 COPY src ./src
@@ -29,7 +29,7 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY package*.json ./
 
 # Instalar solo dependencias de producción
-RUN npm ci --only=production && \
+RUN npm install --omit=dev && \
     npm cache clean --force
 
 # Copiar build desde etapa anterior
