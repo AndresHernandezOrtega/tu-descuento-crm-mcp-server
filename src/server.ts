@@ -193,13 +193,6 @@ export class MCPServer {
 
       console.log(`🔗 Cliente HTTP Streamable conectado (sesión ${sessionId})`)
 
-      // Configurar headers para HTTP streaming
-      res.setHeader('Content-Type', 'application/json')
-      res.setHeader('Transfer-Encoding', 'chunked')
-      res.setHeader('Connection', 'keep-alive')
-      res.setHeader('Cache-Control', 'no-cache')
-      res.setHeader('X-Accel-Buffering', 'no')
-
       // Obtener o crear servidor para esta sesión
       let server = this.servers.get(sessionId)
       if (!server) {
@@ -207,6 +200,12 @@ export class MCPServer {
         server = this.createMCPServerInstance()
         this.servers.set(sessionId, server)
       }
+
+      // Limpiar cuando el cliente se desconecta
+      req.on('close', () => {
+        this.servers.delete(sessionId)
+        console.log(`🔌 Cliente desconectado (sesión ${sessionId})`)
+      })
 
       try {
         // Parsear el body como JSON (viene como texto raw)
@@ -229,41 +228,44 @@ export class MCPServer {
 
         console.log(`📨 Recibidos ${messages.length} mensaje(s) (sesión ${sessionId})`)
 
-        // Procesar cada mensaje y enviar respuestas
+        // Recopilar todas las respuestas
+        const responses: any[] = []
+
+        // Procesar cada mensaje
         for (const message of messages) {
           console.log(`   → Procesando: ${message.method || 'notification'}`)
 
           const response = await this.processMessage(message)
 
           if (response) {
-            // Enviar respuesta como línea JSON seguida de newline
-            res.write(JSON.stringify(response) + '\n')
-            console.log(`   ✅ Respuesta enviada: ${message.method}`)
+            responses.push(response)
+            console.log(`   ✅ Respuesta generada: ${message.method}`)
           }
         }
 
-        // Cerrar la conexión después de procesar todos los mensajes
-        res.end()
-
-        // Limpiar cuando el cliente se desconecta
-        req.on('close', () => {
-          this.servers.delete(sessionId)
-          console.log(`🔌 Cliente desconectado (sesión ${sessionId})`)
-        })
+        // Enviar todas las respuestas de una vez
+        if (responses.length === 1) {
+          // Una sola respuesta: enviar como objeto JSON
+          res.json(responses[0])
+        } else if (responses.length > 1) {
+          // Múltiples respuestas: enviar como líneas separadas
+          res.setHeader('Content-Type', 'application/json')
+          res.send(responses.map((r) => JSON.stringify(r)).join('\n'))
+        } else {
+          // Sin respuestas (notificaciones) - enviar 200 OK vacío
+          res.status(200).end()
+        }
       } catch (error) {
         console.error('❌ Error en endpoint Streamable HTTP:', error)
-        res.write(
-          JSON.stringify({
-            jsonrpc: '2.0',
-            error: {
-              code: -32603,
-              message: 'Internal error',
-              data: error instanceof Error ? error.message : String(error),
-            },
-            id: null,
-          }) + '\n',
-        )
-        res.end()
+        res.status(500).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32603,
+            message: 'Internal error',
+            data: error instanceof Error ? error.message : String(error),
+          },
+          id: null,
+        })
       }
     })
   }
