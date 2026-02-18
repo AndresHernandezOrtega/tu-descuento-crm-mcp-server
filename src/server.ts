@@ -88,7 +88,8 @@ export class MCPServer {
   private async processMessage(message: any): Promise<any> {
     try {
       // Las notificaciones (sin id) no requieren respuesta
-      if (!message.id) {
+      // Nota: debemos verificar explícitamente contra undefined/null porque id puede ser 0
+      if (message.id === undefined || message.id === null) {
         console.log(`🔔 Notificación recibida: ${message.method}`)
         return null
       }
@@ -233,11 +234,13 @@ export class MCPServer {
 
         // Log detallado de los mensajes para debugging
         messages.forEach((msg, idx) => {
-          console.log(`   [${idx}] method: ${msg.method || 'none'}, id: ${msg.id !== undefined ? msg.id : 'none'}, hasResult: ${msg.result !== undefined}, hasError: ${msg.error !== undefined}`)
+          const idStr = msg.id !== undefined && msg.id !== null ? msg.id.toString() : 'none'
+          console.log(`   [${idx}] method: ${msg.method || 'none'}, id: ${idStr}, hasResult: ${msg.result !== undefined}, hasError: ${msg.error !== undefined}`)
         })
 
         // Determinar si hay requests (con id y method) vs solo notificaciones/respuestas
-        const hasRequests = messages.some((msg) => msg.id !== undefined && msg.method !== undefined)
+        // Nota: id puede ser 0, así que verificamos explícitamente contra undefined/null
+        const hasRequests = messages.some((msg) => msg.id !== undefined && msg.id !== null && msg.method !== undefined)
 
         // Recopilar todas las respuestas
         const responses: any[] = []
@@ -246,7 +249,8 @@ export class MCPServer {
         // Procesar cada mensaje
         for (const message of messages) {
           const msgType = message.method ? `${message.method}` : message.result !== undefined || message.error !== undefined ? 'response' : 'unknown'
-          console.log(`   → Procesando: ${msgType} (id: ${message.id || 'none'})`)
+          const idStr = message.id !== undefined && message.id !== null ? message.id.toString() : 'none'
+          console.log(`   → Procesando: ${msgType} (id: ${idStr})`)
 
           const response = await this.processMessage(message)
 
@@ -283,7 +287,7 @@ export class MCPServer {
               code: -32603,
               message: 'Internal error: No response generated',
             },
-            id: messages.find((m) => m.id !== undefined)?.id || null,
+            id: messages.find((m) => m.id !== undefined && m.id !== null)?.id ?? null,
           })
         }
 
