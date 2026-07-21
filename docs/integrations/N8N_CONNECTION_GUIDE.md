@@ -311,7 +311,7 @@ Nodes:
 ## 🔗 Referencias
 
 - [Documentación MCP Protocol](https://modelcontextprotocol.io)
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Arquitectura del servidor
+- [ARCHITECTURE.md](../architecture/ARCHITECTURE.md) - Arquitectura del servidor
 - [README.md](README.md) - Configuración general
 
 ## 🆘 Soporte

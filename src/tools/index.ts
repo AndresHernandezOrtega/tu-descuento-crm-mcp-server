@@ -5,6 +5,7 @@ import { getPublicMembershipsTool, handleGetPublicMemberships, getMembershipDisc
 import { getAlliedCommerceTool, handleGetAlliedCommerce, getAlliedCommercesByCategoryTool, handleGetAlliedCommercesByCategory } from '@tools/sales/allied-commerces.js'
 import { getSupportLogsTool, handleGetSupportLogs, createSupportLogTool, handleCreateSupportLog } from '@tools/documentation/support-bot-log.js'
 import { createLeadTool, handleCreateLead } from '@tools/sales/leads.js'
+import { forgotPasswordTool, handleForgotPassword } from '@tools/costumers/forgot-password.js'
 
 /**
  * TOOLS DEL SERVIDOR MCP
@@ -46,6 +47,7 @@ export const tools: Tool[] = [
   getSupportLogsTool,
   createSupportLogTool,
   createLeadTool,
+  forgotPasswordTool,
   // Aquí se agregarán los tools del CRM de TuDescuento
   // Ejemplo:
   // {
@@ -107,6 +109,10 @@ export async function handleToolCall(request: CallToolRequest) {
 
     case 'create_lead': {
       return await handleCreateLead(args)
+    }
+
+    case 'forgot_password': {
+      return await handleForgotPassword(args)
     }
 
     // Aquí se agregarán los casos para cada tool

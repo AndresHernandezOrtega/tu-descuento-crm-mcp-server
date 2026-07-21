@@ -1,0 +1,40 @@
+---
+description: Patterns for CRM API services extending BaseService
+globs: src/services/**/*.ts
+alwaysApply: false
+---
+
+# Services
+
+All services **must** extend `BaseService` (`src/services/base-service.ts`).
+
+## Rules
+
+- Use `this.get/post/put/patch/delete` — they return `Promise<ApiResponse<T>>`
+- Do **not** wrap calls in try/catch; `ApiClient` already maps errors to `{ success: false, error }`
+- Use `buildQueryParams` for optional filters (drops null/undefined)
+- Strip empty optional fields from POST/PUT payloads when needed (see `lead-service.ts`)
+- Prefer a domain `basePath` constant; export a singleton instance at file end when useful
+
+## Template
+
+```typescript
+import { BaseService } from '@services/base-service.js'
+import type { ApiResponse, YourEntity } from '@/types/index.js'
+
+export class ExampleService extends BaseService {
+  private readonly basePath = '/api/example'
+
+  async getById(id: number): Promise<ApiResponse<YourEntity>> {
+    return this.get<YourEntity>(`${this.basePath}/${id}`)
+  }
+}
+
+export const exampleService = new ExampleService()
+```
+
+## Auth & config
+
+- Base URL: `process.env.TUDESCUENTO_API_URL`
+- Bearer token injected from `process.env.TUDESCUENTO_API_KEY`
+- Response shapes vary: `LaravelPaginatedResponse<T>`, `GenericEntityResponse<T>`, or raw arrays — confirm against Postman (TuDescuento Backend API) before typing

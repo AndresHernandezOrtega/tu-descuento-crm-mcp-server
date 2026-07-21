@@ -1,0 +1,63 @@
+---
+description: MCP tool definition, handler, and registration patterns
+globs: src/tools/**/*.ts
+alwaysApply: false
+---
+
+# Tools
+
+Every tool has **three parts**: definition, async handler, registration in `src/tools/index.ts`.
+
+## Modules
+
+Place tools under domain folders:
+
+- `costumers/` — customer lookups and account actions
+- `sales/` — memberships, discounts, leads, allied commerces, categories
+- `documentation/` — support logs / operational traceability
+
+## Definition + handler
+
+```typescript
+export const getExampleTool: Tool = {
+  name: 'get_example',
+  description: 'Detailed description for the AI agent: when to use, what it returns',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: { type: 'number', description: 'Entity id' },
+    },
+    required: ['id'],
+  },
+}
+
+export async function handleGetExample(args: { id: number }) {
+  const service = new ExampleService()
+  const result = await service.getById(args.id)
+
+  if (!result.success || !result.data) {
+    return {
+      content: [{ type: 'text' as const, text: result.error?.message || 'Error' }],
+      isError: true,
+    }
+  }
+
+  return {
+    content: [{ type: 'text' as const, text: JSON.stringify(result.data, null, 2) }],
+  }
+}
+```
+
+## Registration (`src/tools/index.ts`)
+
+1. Import tool + handler
+2. Add tool to `tools` array
+3. Add `case` in `handleToolCall` switch
+
+## Rules
+
+- `name` in snake_case, unique and semantic
+- Descriptions must be rich — they drive agent tool selection
+- Always define full `inputSchema`; re-validate critical args in the handler
+- Always check `result.success` before returning data
+- Prefer researching the CRM endpoint first (`crm-endpoint-research` / `crm-api-researcher`) then implement via `mcp-tool-creator`

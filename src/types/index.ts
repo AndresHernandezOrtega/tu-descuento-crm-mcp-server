@@ -40,3 +40,6 @@ export type { AlliedCommerce, RepresentanteLegal, TypeUser, UserAlliedCommerce, 
 
 // Soporte y Documentación
 export type { SupportLog, User, SupportLogsResponse, CreateOrUpdateSupportLogDto, CreateSupportLogResponse } from './entities/support-logs.js'
+
+// Autenticación cliente final
+export type { ForgotPasswordRequest, ForgotPasswordResponse } from './entities/auth.js'

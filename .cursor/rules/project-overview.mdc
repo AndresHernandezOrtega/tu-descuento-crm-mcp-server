@@ -1,0 +1,45 @@
+---
+description: Core context for the Tu Descuento MCP server — purpose, layout, build, and import aliases
+alwaysApply: true
+---
+
+# MCP Server — Tu Descuento Colombia
+
+HTTP streamable MCP server that exposes tools, prompts, and resources so an AI support agent can talk to the Tu Descuento CRM.
+
+## Key paths
+
+- `src/server.ts` — Express + MCP transport (`POST /mcp`)
+- `src/tools/` — MCP tools (agent-callable functions)
+- `src/services/` — API clients extending `BaseService`
+- `src/types/entities/` — CRM entity types; re-exported from `src/types/index.ts`
+- `src/prompts/`, `src/resources/` — MCP prompts and static resources
+- `docs/` — Project documentation index in `docs/README.md`
+
+## Build & run
+
+```bash
+npm run build   # tsc + tsc-alias (required for @/ path resolution)
+npm start
+npm run dev
+```
+
+Test via Postman JSON-RPC against `POST http://localhost:3000/mcp`. See `docs/integrations/POSTMAN_TESTS.md`.
+
+## Import aliases (mandatory)
+
+From `tsconfig.json`: `@/*`, `@services/*`, `@tools/*`. Always append `.js` in imports (ESM):
+
+```typescript
+import { BaseService } from '@services/base-service.js'
+```
+
+## New tool checklist (4–5 files)
+
+1. `src/types/entities/[entity].ts`
+2. Export in `src/types/index.ts`
+3. `src/services/[entity]-service.ts`
+4. `src/tools/[module]/[tool].ts`
+5. Register in `src/tools/index.ts`
+
+Prefer the `mcp-tool-creator` skill and `crm-api-researcher` / `mcp-tool-builder` subagents when implementing CRM-backed tools.

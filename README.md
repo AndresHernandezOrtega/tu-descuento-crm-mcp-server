@@ -182,7 +182,11 @@ Endpoint principal MCP con transporte Streamable HTTP. Recibe mensajes JSON-RPC 
 2. Configura Transport Type: **Streamable HTTP**
 3. URL: `http://localhost:3000/mcp`
 
-Para más detalles, consulta [N8N_CONNECTION_GUIDE.md](N8N_CONNECTION_GUIDE.md)
+Para más detalles, consulta [N8N_CONNECTION_GUIDE.md](docs/integrations/N8N_CONNECTION_GUIDE.md)
+
+## 📚 Documentación
+
+La documentación técnica está en [docs/](docs/README.md) (arquitectura, despliegue, transporte MCP e integraciones).
 
 ## 🌍 Variables de Entorno
 

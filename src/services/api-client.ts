@@ -144,6 +144,7 @@ export class ApiClient {
           error: data?.error || this.getErrorNameByStatus(status),
           message: data?.message || axiosError.message,
           details: data?.details,
+          statusCode: status,
         }
 
         return {

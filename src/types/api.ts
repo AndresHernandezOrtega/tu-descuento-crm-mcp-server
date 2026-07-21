@@ -45,6 +45,7 @@ export interface ApiErrorResponse {
   error?: string
   message: string
   details?: any
+  statusCode?: number
 }
 
 /**

@@ -27,7 +27,7 @@ npm run watch      # Watch TypeScript compilation only
 Use **Postman** or similar HTTP clients to test MCP endpoints:
 
 - **POST** `http://localhost:3000/mcp` with JSON-RPC 2.0 format
-- See `POSTMAN_TESTS.md` for complete request examples
+- See `docs/integrations/POSTMAN_TESTS.md` for complete request examples
 - All requests require `mcp-session-id` header (returned after `initialize` method)
 
 ## Critical Patterns
@@ -174,14 +174,15 @@ Use `multi_replace_string_in_file` to batch these edits efficiently.
 - **Purpose**: AI agent interface for Tu Descuento Colombia CRM system
 - **Transport**: HTTP with Server-Sent Events (SSE) for MCP streaming
 - **Primary Users**: AI assistants (Claude, GPT, etc.) via MCP protocol
-- **Testing**: Manual via Postman using JSON-RPC 2.0 format (see `POSTMAN_TESTS.md`)
+- **Testing**: Manual via Postman using JSON-RPC 2.0 format (see `docs/integrations/POSTMAN_TESTS.md`)
 - **Deployment**: Docker-ready with health checks (`/health` endpoint)
 
 ## Documentation
 
-- `ARCHITECTURE.md`: Comprehensive service/types/tools patterns with examples
+- `docs/architecture/ARCHITECTURE.md`: Comprehensive service/types/tools patterns with examples
 - `README.md`: Setup, environment vars, API endpoints
-- `POSTMAN_TESTS.md`: JSON-RPC request examples for all tools
+- `docs/integrations/POSTMAN_TESTS.md`: JSON-RPC request examples for all tools
+- `docs/README.md`: Documentation index
 - `src/types/README.md`: Type system organization
 
 ## Quick Reference: Adding a New Tool

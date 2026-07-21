@@ -1,0 +1,40 @@
+---
+description: TypeScript entity and API response type conventions
+globs: src/types/**/*.ts
+alwaysApply: false
+---
+
+# Types
+
+## Layout
+
+- One file per CRM entity under `src/types/entities/`
+- Shared API wrappers live in `src/types/api.ts` / `generic-entities.ts`
+- Always re-export new types from `src/types/index.ts` (group by domain)
+
+## Conventions
+
+- Dates as ISO **strings**, never `Date`
+- Define the entity interface first, then response wrappers (`SomethingResponse`, paginated wrappers)
+- Backend may return an ID **or** a nested object for the same field — use union types when observed
+
+```typescript
+// src/types/entities/example.ts
+export interface Example {
+  id: number
+  created_at: string // ISO string
+}
+
+export interface ExampleResponse {
+  example: Example
+}
+```
+
+```typescript
+// src/types/index.ts
+export type { Example, ExampleResponse } from './entities/example.js'
+```
+
+## Before inventing shapes
+
+Research the live request/response in the Postman collection **TuDescuento Backend API** (`16285310-a4b62407-4826-48fe-8219-9d614c95b599`) via the `crm-endpoint-research` skill or `crm-api-researcher` subagent.
