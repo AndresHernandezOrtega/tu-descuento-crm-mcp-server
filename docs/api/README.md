@@ -2,10 +2,10 @@
 
 Documentación generada o actualizada por el subagente **service-documenter** a partir de:
 
-- Collection Postman del MCP server (`16285310-6988f8b63ec0c170bf79ae62`)
+- Collection Postman del MCP server (`16285310-6693942e-4dfa-4a81-a981-23401dd2fac0`)
 - Código en `src/tools/`, `src/prompts/`, `src/resources/`
 
-Ejecuta el subagente `service-documenter` (o pide en el chat: “documenta las capacidades del MCP con Postman”) para poblar esta carpeta con:
+Ejecuta el subagente `mcp-postman-documenter` para sincronizar tools/prompts/resources **dentro de Postman**, o `service-documenter` para regenerar markdown en esta carpeta.
 
 - `tools.md`
 - `prompts.md`

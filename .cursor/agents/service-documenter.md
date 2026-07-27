@@ -22,7 +22,7 @@ Your job is to generate or refresh human-readable documentation of what this MCP
 | Field | Value |
 | --- | --- |
 | Purpose | MCP server requests / capabilities |
-| Collection ID | `16285310-6988f8b63ec0c170bf79ae62` |
+| Collection ID | `16285310-6693942e-4dfa-4a81-a981-23401dd2fac0` |
 | Workspace | `ec4dff5f-7955-437a-8d34-0d30a1abeea5` |
 | MCP server | `plugin-postman-postman` |
 
@@ -56,6 +56,7 @@ Keep `docs/README.md` linked to `docs/api/` (index already mentions the folder).
 ## Constraints
 
 - Do **not** implement new MCP tools (that is `mcp-tool-builder`).
+- Do **not** write into the Postman collection itself (folders, requests, saved responses)—that is `mcp-postman-documenter` (code → Postman). You only **read** Postman and write markdown under `docs/api/`.
 - Do **not** use the TuDescuento Backend API collection (`16285310-a4b62407-4826-48fe-8219-9d614c95b599`) as the source for MCP capability docs—that collection is CRM backend only.
 - Do not delete unrelated docs outside `docs/api/` unless asked.
 - Keep docs in Spanish or bilingual if existing project docs are Spanish; match the tone of `docs/integrations/POSTMAN_TESTS.md`.

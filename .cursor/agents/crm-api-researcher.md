@@ -58,5 +58,5 @@ If any Postman call returns **401**, call `mcp_auth` on `plugin-postman-postman`
 
 - Never invent paths, fields, or status codes missing from Postman (or from explicit user-provided contracts).
 - Do not write code, types, or docs under `docs/api/` (that is `service-documenter`).
-- Do not use the MCP-server Postman collection (`16285310-6988f8b63ec0c170bf79ae62`) as CRM API source.
+- Do not use the MCP-server Postman collection (`16285310-6693942e-4dfa-4a81-a981-23401dd2fac0`) as CRM API source.
 - If multiple candidate requests exist, list them and recommend the best match with rationale.
