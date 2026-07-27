@@ -16,6 +16,10 @@
 - [STREAMABLE_HTTP_GUIDE.md](transport/STREAMABLE_HTTP_GUIDE.md) — Guía del transporte Streamable HTTP
 - [CHANGELOG_STREAMABLE_HTTP.md](transport/CHANGELOG_STREAMABLE_HTTP.md) — Changelog del transporte
 
+## Seguridad
+
+- [AUTHENTICATION.md](security/AUTHENTICATION.md) — Bearer tokens multi-cliente, rate limit y sesiones
+
 ## Integraciones
 
 - [N8N_CONNECTION_GUIDE.md](integrations/N8N_CONNECTION_GUIDE.md) — Conexión con n8n (MCP Client)

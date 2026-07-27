@@ -1,67 +1,76 @@
-import type { Tool } from '@modelcontextprotocol/sdk/types.js'
+import { z } from 'zod'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { AuthService } from '@services/auth-service.js'
+import { ok, fail, mapApiError } from '@tools/tool-result.js'
 
-export const forgotPasswordTool: Tool = {
-  name: 'forgot_password',
-  description:
-    'Solicita el envío de un código de restauración de contraseña (OTP) al email del cliente final. Úsalo cuando el usuario pida restaurar su contraseña de acceso a la plataforma de Tu Descuento.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      email: {
-        type: 'string',
-        description: 'Correo electrónico del cliente que solicita restaurar su contraseña',
-      },
-    },
-    required: ['email'],
-  },
+const inputSchema = {
+  email: z
+    .string()
+    .email()
+    .describe('Correo electrónico del cliente que solicita restaurar su contraseña. Ejemplo: cliente@email.com'),
 }
 
-export async function handleForgotPassword(args: any) {
-  const { email } = args
-  if (!email || typeof email !== 'string' || !email.includes('@')) {
-    return {
-      content: [{ type: 'text' as const, text: 'Error: Debes proporcionar un email válido.' }],
-      isError: true,
-    }
-  }
+const outputSchema = {
+  message: z.string(),
+  email: z.string().optional(),
+  otp_expires_in_minutes: z.number().optional(),
+  otp_mail_sent: z.boolean().optional(),
+}
 
-  const service = new AuthService()
-  const result = await service.forgotPassword(email)
+export function registerForgotPassword(server: McpServer): void {
+  server.registerTool(
+    'forgot_password',
+    {
+      title: 'Solicitar OTP de restauración de contraseña',
+      description:
+        'Solicita el envío de un código OTP de restauración de contraseña al email del cliente final. ' +
+        'ADVERTENCIA: Esta acción envía un correo real al cliente. Úsala solo cuando el usuario pida explícitamente restaurar su contraseña de acceso a Tu Descuento.',
+      inputSchema,
+      outputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async ({ email }) => {
+      const service = new AuthService()
+      const result = await service.forgotPassword(email)
 
-  if (!result.success || !result.data) {
-    // Si el backend responde 404, usar data.error en el texto del MCP
-    if (result.error?.statusCode === 404 && result.error?.error) {
-      const errorText = typeof result.error.error === 'string' ? result.error.error : JSON.stringify(result.error.error, null, 2)
-
-      return {
-        content: [{ type: 'text' as const, text: errorText }],
-        isError: true,
+      if (!result.success || !result.data) {
+        if (result.error?.statusCode === 404 && result.error?.error) {
+          const errorText =
+            typeof result.error.error === 'string' ? result.error.error : JSON.stringify(result.error.error)
+          return fail('NOT_FOUND', errorText, 'Verifica que el email esté registrado en la plataforma.')
+        }
+        return mapApiError(result.error, 'No se pudo solicitar el reinicio de contraseña.')
       }
-    }
 
-    return {
-      content: [{ type: 'text' as const, text: result.error?.message || 'No se pudo solicitar el reinicio de contraseña.' }],
-      isError: true,
-    }
-  }
+      if (!result.data.status) {
+        return fail(
+          'VALIDATION_ERROR',
+          result.data.message,
+          result.data.error ? JSON.stringify(result.data.error) : undefined,
+        )
+      }
 
-  if (!result.data.status) {
-    // Errores lógicos del backend dentro de respuesta HTTP exitosa
-    const backendError = result.data.error ? `\n${JSON.stringify(result.data.error, null, 2)}` : ''
+      const resp = result.data.data
+      const summary =
+        `${result.data.message}\n` +
+        `OTP enviado a: ${resp?.email ?? email}\n` +
+        `Expira en: ${resp?.otp_expires_in_minutes ?? '?'} minutos.\n` +
+        `Indica al usuario que revise su correo para completar la restauración.`
 
-    return {
-      content: [{ type: 'text' as const, text: `${result.data.message}${backendError}` }],
-      isError: true,
-    }
-  }
-
-  // Éxito
-  const { message, data: respData } = result.data
-  let text = `✅ ${message}\n\nSe envió un código OTP al correo: ${respData?.email}\nEl código expira en ${respData?.otp_expires_in_minutes} minutos.`
-  text += '\n\nIndícale al usuario que revise su correo y use el código OTP para completar el proceso de restauración de contraseña.'
-  text += '\n\n--- Respuesta completa ---\n' + JSON.stringify(result.data, null, 2)
-  return {
-    content: [{ type: 'text' as const, text }],
-  }
+      return ok(
+        {
+          message: result.data.message,
+          email: resp?.email,
+          otp_expires_in_minutes: resp?.otp_expires_in_minutes,
+          otp_mail_sent: resp?.otp_mail_sent,
+        },
+        summary,
+      )
+    },
+  )
 }

@@ -1,47 +1,56 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import {
-  CallToolRequestSchema,
-  ListResourcesRequestSchema,
-  ListToolsRequestSchema,
-  ReadResourceRequestSchema,
-  ListPromptsRequestSchema,
-  GetPromptRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js'
+import { randomUUID } from 'crypto'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-import { randomUUID } from 'crypto'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { config } from '@config/config.js'
-import { tools, handleToolCall } from '@tools/index.js'
-import { prompts, handleGetPrompt } from '@prompts/index.js'
-import { resources, handleReadResource } from '@resources/index.js'
+import { authMiddleware } from '@/middleware/auth.js'
+import { createRateLimitMiddleware } from '@/middleware/rate-limit.js'
+import { registerAllTools } from '@tools/index.js'
+
+interface SessionEntry {
+  transport: StreamableHTTPServerTransport
+  server: McpServer
+  clientName: string
+  lastAccessMs: number
+}
+
+function isInitializeRequest(body: unknown): boolean {
+  const messages = Array.isArray(body) ? body : [body]
+  return messages.some(
+    (msg) =>
+      typeof msg === 'object' &&
+      msg !== null &&
+      'method' in msg &&
+      (msg as { method?: string }).method === 'initialize',
+  )
+}
 
 export class MCPServer {
   private app: express.Application
-  private servers: Map<string, Server> = new Map()
+  private sessions = new Map<string, SessionEntry>()
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null
 
   constructor() {
     this.app = express()
     this.setupMiddleware()
     this.setupRoutes()
+    this.startSessionCleanup()
   }
 
   private setupMiddleware(): void {
-    // Middleware para raw body (necesario para streaming)
-    this.app.use(express.text({ type: 'application/json', limit: '10mb' }))
+    this.app.use(express.json({ limit: '4mb' }))
     this.app.use(
       cors({
-        origin: config.corsOrigins,
+        origin: config.corsOrigins.includes('*') ? true : config.corsOrigins,
         credentials: true,
-        exposedHeaders: ['Content-Type', 'Transfer-Encoding'],
+        exposedHeaders: ['Content-Type', 'Mcp-Session-Id', 'WWW-Authenticate', 'Retry-After'],
       }),
     )
   }
 
-  /**
-   * Crea una nueva instancia del servidor MCP con todos los handlers configurados
-   */
-  private createMCPServerInstance(): Server {
-    const server = new Server(
+  private createMcpServer(): McpServer {
+    const server = new McpServer(
       {
         name: config.mcpServerName,
         version: config.mcpServerVersion,
@@ -49,266 +58,155 @@ export class MCPServer {
       {
         capabilities: {
           tools: {},
-          prompts: {},
-          resources: {},
         },
       },
     )
 
-    // Handler para listar tools
-    server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools,
-    }))
-
-    // Handler para ejecutar tools
-    server.setRequestHandler(CallToolRequestSchema, async (request) => handleToolCall(request))
-
-    // Handler para listar prompts
-    server.setRequestHandler(ListPromptsRequestSchema, async () => ({
-      prompts,
-    }))
-
-    // Handler para obtener un prompt
-    server.setRequestHandler(GetPromptRequestSchema, async (request) => handleGetPrompt(request))
-
-    // Handler para listar resources
-    server.setRequestHandler(ListResourcesRequestSchema, async () => ({
-      resources,
-    }))
-
-    // Handler para leer un resource
-    server.setRequestHandler(ReadResourceRequestSchema, async (request) => handleReadResource(request))
-
+    registerAllTools(server)
     return server
   }
 
-  /**
-   * Procesa un mensaje JSON-RPC y retorna la respuesta
-   */
-  private async processMessage(message: any): Promise<any> {
-    try {
-      // Las notificaciones (sin id) no requieren respuesta
-      // Nota: debemos verificar explícitamente contra undefined/null porque id puede ser 0
-      if (message.id === undefined || message.id === null) {
-        console.log(`🔔 Notificación recibida: ${message.method}`)
-        return null
+  private startSessionCleanup(): void {
+    const intervalMs = Math.min(config.sessionTtlMs, 5 * 60 * 1000)
+    this.cleanupTimer = setInterval(() => {
+      const now = Date.now()
+      for (const [sessionId, entry] of this.sessions.entries()) {
+        if (now - entry.lastAccessMs > config.sessionTtlMs) {
+          console.log(`⏱️  Sesión expirada por TTL: ${sessionId}`)
+          void entry.transport.close().catch(() => undefined)
+          this.sessions.delete(sessionId)
+        }
       }
+    }, intervalMs)
 
-      //  Para la inicialización, respondemos con las capacidades
-      if (message.method === 'initialize') {
-        return {
-          jsonrpc: '2.0',
-          id: message.id,
-          result: {
-            protocolVersion: '2024-11-05',
-            serverInfo: {
-              name: config.mcpServerName,
-              version: config.mcpServerVersion,
-            },
-            capabilities: {
-              tools: {},
-              prompts: {},
-              resources: {},
-            },
-          },
-        }
-      } else if (message.method === 'tools/list') {
-        return {
-          jsonrpc: '2.0',
-          id: message.id,
-          result: { tools },
-        }
-      } else if (message.method === 'tools/call') {
-        const result = await handleToolCall({ params: message.params } as any)
-        return {
-          jsonrpc: '2.0',
-          id: message.id,
-          result,
-        }
-      } else if (message.method === 'prompts/list') {
-        return {
-          jsonrpc: '2.0',
-          id: message.id,
-          result: { prompts },
-        }
-      } else if (message.method === 'prompts/get') {
-        const result = await handleGetPrompt({ params: message.params } as any)
-        return {
-          jsonrpc: '2.0',
-          id: message.id,
-          result,
-        }
-      } else if (message.method === 'resources/list') {
-        return {
-          jsonrpc: '2.0',
-          id: message.id,
-          result: { resources },
-        }
-      } else if (message.method === 'resources/read') {
-        const result = await handleReadResource({ params: message.params } as any)
-        return {
-          jsonrpc: '2.0',
-          id: message.id,
-          result,
-        }
-      } else {
-        // Método no soportado
-        return {
-          jsonrpc: '2.0',
-          id: message.id,
-          error: {
-            code: -32601,
-            message: `Method not found: ${message.method}`,
-          },
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error procesando mensaje MCP:', error)
-      return {
-        jsonrpc: '2.0',
-        error: {
-          code: -32603,
-          message: 'Internal error',
-          data: error instanceof Error ? error.message : String(error),
-        },
-        id: message.id,
-      }
+    if (typeof this.cleanupTimer === 'object' && this.cleanupTimer && 'unref' in this.cleanupTimer) {
+      this.cleanupTimer.unref()
     }
   }
 
+  private forbidCrossClient(res: Response, sessionClient: string, requestClient: string): void {
+    res.status(403).json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32003,
+        message: `Session belongs to client "${sessionClient}", not "${requestClient}"`,
+      },
+      id: null,
+    })
+  }
+
   private setupRoutes(): void {
-    // Endpoint de salud
     this.app.get('/health', (_req: Request, res: Response) => {
       res.json({
         status: 'ok',
         server: config.mcpServerName,
         version: config.mcpServerVersion,
         timestamp: new Date().toISOString(),
-        activeSessions: this.servers.size,
+        activeSessions: this.sessions.size,
       })
     })
 
-    // Endpoint HTTP Streamable para MCP
-    this.app.post('/mcp', async (req: Request, res: Response) => {
-      const sessionId = (req.headers['mcp-session-id'] as string) || randomUUID()
+    const rateLimit = createRateLimitMiddleware(config.rateLimitPerMinute)
+    const mcpAuth = [authMiddleware, rateLimit]
 
-      console.log(`🔗 Cliente HTTP Streamable conectado (sesión ${sessionId})`)
+    this.app.post('/mcp', ...mcpAuth, async (req: Request, res: Response) => {
+      await this.handleMcpPost(req, res)
+    })
 
-      // Obtener o crear servidor para esta sesión
-      let server = this.servers.get(sessionId)
-      const isNewSession = !server
-      if (!server) {
-        console.log(`📝 Nueva sesión MCP: ${sessionId}`)
-        server = this.createMCPServerInstance()
-        this.servers.set(sessionId, server)
+    this.app.get('/mcp', ...mcpAuth, async (req: Request, res: Response) => {
+      await this.handleMcpSessionRequest(req, res)
+    })
+
+    this.app.delete('/mcp', ...mcpAuth, async (req: Request, res: Response) => {
+      await this.handleMcpSessionRequest(req, res)
+    })
+  }
+
+  private async handleMcpPost(req: Request, res: Response): Promise<void> {
+    const client = req.mcpClient
+    if (!client) {
+      res.status(401).json({
+        jsonrpc: '2.0',
+        error: { code: -32001, message: 'Unauthorized' },
+        id: null,
+      })
+      return
+    }
+
+    const sessionId = req.headers['mcp-session-id'] as string | undefined
+
+    try {
+      if (sessionId && this.sessions.has(sessionId)) {
+        const entry = this.sessions.get(sessionId)!
+        if (entry.clientName !== client.name) {
+          this.forbidCrossClient(res, entry.clientName, client.name)
+          return
+        }
+        entry.lastAccessMs = Date.now()
+        await entry.transport.handleRequest(req, res, req.body)
+        return
       }
 
-      // Limpiar cuando el cliente se desconecta
-      req.on('close', () => {
-        this.servers.delete(sessionId)
-        console.log(`🔌 Cliente desconectado (sesión ${sessionId})`)
-      })
+      if (!sessionId && isInitializeRequest(req.body)) {
+        const enableDnsProtection = config.allowedHosts.length > 0
+        const allowedOrigins = config.corsOrigins.includes('*') ? undefined : [...config.corsOrigins]
 
-      try {
-        // Parsear el body como JSON (viene como texto raw)
-        const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
-
-        // Intentar parsear como objeto único o array
-        let messages: any[]
-        try {
-          const parsed = JSON.parse(body.trim())
-          messages = Array.isArray(parsed) ? parsed : [parsed]
-        } catch (e) {
-          console.error('❌ Error parseando mensaje JSON:', body)
-          return res.status(400).json({
-            jsonrpc: '2.0',
-            error: {
-              code: -32700,
-              message: 'Parse error',
-            },
-            id: null,
-          })
-        }
-
-        console.log(`📨 Recibidos ${messages.length} mensaje(s) (sesión ${sessionId})`)
-
-        // Log detallado de los mensajes para debugging
-        messages.forEach((msg, idx) => {
-          const idStr = msg.id !== undefined && msg.id !== null ? msg.id.toString() : 'none'
-          console.log(`   [${idx}] method: ${msg.method || 'none'}, id: ${idStr}, hasResult: ${msg.result !== undefined}, hasError: ${msg.error !== undefined}`)
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          enableJsonResponse: true,
+          enableDnsRebindingProtection: enableDnsProtection,
+          allowedHosts: enableDnsProtection ? config.allowedHosts : undefined,
+          allowedOrigins: enableDnsProtection ? allowedOrigins : undefined,
+          onsessioninitialized: (sid) => {
+            console.log(`📝 Sesión MCP inicializada: ${sid} (cliente: ${client.name})`)
+          },
+          onsessionclosed: (sid) => {
+            this.sessions.delete(sid)
+            console.log(`🔌 Sesión MCP cerrada: ${sid}`)
+          },
         })
 
-        // Determinar si hay requests (con id y method) vs solo notificaciones/respuestas
-        // Nota: id puede ser 0, así que verificamos explícitamente contra undefined/null
-        const hasRequests = messages.some((msg) => msg.id !== undefined && msg.id !== null && msg.method !== undefined)
+        const server = this.createMcpServer()
 
-        // Recopilar todas las respuestas
-        const responses: any[] = []
-        let isInitializeResponse = false
-
-        // Procesar cada mensaje
-        for (const message of messages) {
-          const msgType = message.method ? `${message.method}` : message.result !== undefined || message.error !== undefined ? 'response' : 'unknown'
-          const idStr = message.id !== undefined && message.id !== null ? message.id.toString() : 'none'
-          console.log(`   → Procesando: ${msgType} (id: ${idStr})`)
-
-          const response = await this.processMessage(message)
-
-          if (response) {
-            responses.push(response)
-            console.log(`   ✅ Respuesta generada para: ${msgType}`)
-
-            // Detectar si es respuesta de initialize
-            if (message.method === 'initialize') {
-              isInitializeResponse = true
-            }
-          } else {
-            console.log(`   ℹ️  Sin respuesta para: ${msgType} (esperado para notificaciones)`)
+        transport.onclose = () => {
+          const sid = transport.sessionId
+          if (sid) {
+            this.sessions.delete(sid)
+            console.log(`🧹 Transport cerrado, sesión eliminada: ${sid}`)
           }
         }
 
-        // Según especificación MCP Streamable HTTP:
-        // Si solo hay notificaciones/respuestas (sin requests): 202 Accepted sin body
-        // Si hay requests: Content-Type application/json con las respuestas
+        await server.connect(transport)
+        await transport.handleRequest(req, res, req.body)
 
-        if (!hasRequests) {
-          // Solo notificaciones/respuestas - 202 Accepted sin body
-          console.log(`   ℹ️  Solo notificaciones/respuestas, retornando 202 Accepted`)
-          return res.status(202).end()
-        }
-
-        // Si llegamos aquí, hay requests que requieren respuesta
-        if (responses.length === 0) {
-          console.error('⚠️  Se esperaba respuesta pero no se generó ninguna')
-          console.error('   Mensajes recibidos:', JSON.stringify(messages, null, 2))
-          return res.status(500).json({
-            jsonrpc: '2.0',
-            error: {
-              code: -32603,
-              message: 'Internal error: No response generated',
-            },
-            id: messages.find((m) => m.id !== undefined && m.id !== null)?.id ?? null,
+        const newSessionId = transport.sessionId
+        if (newSessionId) {
+          this.sessions.set(newSessionId, {
+            transport,
+            server,
+            clientName: client.name,
+            lastAccessMs: Date.now(),
           })
-        }
-
-        // Establecer session ID en header si es una nueva sesión y es initialize
-        if (isNewSession && isInitializeResponse) {
-          res.setHeader('Mcp-Session-Id', sessionId)
-          console.log(`   🆔 Session ID establecido: ${sessionId}`)
-        }
-
-        // Enviar respuestas con Content-Type correcto
-        if (responses.length === 1) {
-          // Una sola respuesta: enviar como objeto JSON
-          res.setHeader('Content-Type', 'application/json')
-          res.send(JSON.stringify(responses[0]))
+          console.log(`🆔 Sesión vinculada a cliente ${client.name}: ${newSessionId}`)
         } else {
-          // Múltiples respuestas: enviar como array JSON
-          res.setHeader('Content-Type', 'application/json')
-          res.send(JSON.stringify(responses))
+          console.warn(`⚠️  Initialize sin sessionId (cliente: ${client.name})`)
         }
-      } catch (error) {
-        console.error('❌ Error en endpoint Streamable HTTP:', error)
+        return
+      }
+
+      res.status(400).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: sessionId
+            ? `Unknown session: ${sessionId}`
+            : 'Bad Request: expected initialize request or valid Mcp-Session-Id',
+        },
+        id: null,
+      })
+    } catch (error) {
+      console.error('❌ Error en POST /mcp:', error)
+      if (!res.headersSent) {
         res.status(500).json({
           jsonrpc: '2.0',
           error: {
@@ -319,7 +217,45 @@ export class MCPServer {
           id: null,
         })
       }
-    })
+    }
+  }
+
+  private async handleMcpSessionRequest(req: Request, res: Response): Promise<void> {
+    const client = req.mcpClient
+    if (!client) {
+      res.status(401).end()
+      return
+    }
+
+    const sessionId = req.headers['mcp-session-id'] as string | undefined
+    if (!sessionId || !this.sessions.has(sessionId)) {
+      res.status(400).json({
+        jsonrpc: '2.0',
+        error: { code: -32000, message: 'Invalid or missing Mcp-Session-Id' },
+        id: null,
+      })
+      return
+    }
+
+    const entry = this.sessions.get(sessionId)!
+    if (entry.clientName !== client.name) {
+      this.forbidCrossClient(res, entry.clientName, client.name)
+      return
+    }
+
+    entry.lastAccessMs = Date.now()
+    try {
+      await entry.transport.handleRequest(req, res)
+    } catch (error) {
+      console.error(`❌ Error en ${req.method} /mcp:`, error)
+      if (!res.headersSent) {
+        res.status(500).json({
+          jsonrpc: '2.0',
+          error: { code: -32603, message: 'Internal error' },
+          id: null,
+        })
+      }
+    }
   }
 
   public async start(): Promise<void> {
@@ -329,13 +265,9 @@ export class MCPServer {
         console.log(`📡 MCP endpoint: http://localhost:${config.port}/mcp`)
         console.log(`❤️  Health check: http://localhost:${config.port}/health`)
         console.log(``)
-        console.log(`Transporte: Streamable HTTP (Chunked Transfer Encoding)`)
-        console.log(`Compatible con n8n MCP Client y otros clientes MCP estándar`)
-        console.log(``)
-        console.log(`📝 Flujo de conexión:`)
-        console.log(`   1. POST /mcp → Enviar mensaje JSON-RPC`)
-        console.log(`   2. Respuestas → Recibidas en el mismo stream HTTP (line-delimited JSON)`)
-        console.log(`   3. Múltiples requests → Enviar múltiples líneas JSON en el mismo POST`)
+        console.log(`Transporte: Streamable HTTP (SDK StreamableHTTPServerTransport)`)
+        console.log(`Auth: Bearer token multi-cliente (MCP_AUTH_TOKENS)`)
+        console.log(`Rate limit: ${config.rateLimitPerMinute} req/min por cliente`)
         console.log(``)
         console.log(`⚙️  Configuración:`)
         console.log(`   • CORS Origins: ${config.corsOrigins.join(', ')}`)

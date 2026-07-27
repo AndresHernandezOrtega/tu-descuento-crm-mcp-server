@@ -6,7 +6,8 @@ alwaysApply: false
 
 # Tools
 
-Every tool has **three parts**: definition, async handler, registration in `src/tools/index.ts`.
+Every tool exports a **`registerX(server: McpServer)`** function that calls `server.registerTool(...)`.
+Registration is centralized in `src/tools/index.ts` via `registerAllTools`.
 
 ## Modules
 
@@ -16,48 +17,57 @@ Place tools under domain folders:
 - `sales/` — memberships, discounts, leads, allied commerces, categories
 - `documentation/` — support logs / operational traceability
 
-## Definition + handler
+## Definition (Zod + annotations)
 
 ```typescript
-export const getExampleTool: Tool = {
-  name: 'get_example',
-  description: 'Detailed description for the AI agent: when to use, what it returns',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      id: { type: 'number', description: 'Entity id' },
+import { z } from 'zod'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { ok, mapApiError } from '@tools/tool-result.js'
+
+export function registerGetExample(server: McpServer): void {
+  server.registerTool(
+    'get_example',
+    {
+      title: 'Obtener ejemplo',
+      description: 'When to use, what it returns, and which IDs come from which other tools.',
+      inputSchema: {
+        id: z.number().int().positive().describe('Entity id. Ejemplo: 12'),
+        limit: z.number().int().positive().optional().describe('Máximo de items (opcional)'),
+      },
+      outputSchema: {
+        items: z.array(z.unknown()),
+        total: z.number(),
+      },
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
     },
-    required: ['id'],
-  },
-}
-
-export async function handleGetExample(args: { id: number }) {
-  const service = new ExampleService()
-  const result = await service.getById(args.id)
-
-  if (!result.success || !result.data) {
-    return {
-      content: [{ type: 'text' as const, text: result.error?.message || 'Error' }],
-      isError: true,
-    }
-  }
-
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(result.data, null, 2) }],
-  }
+    async ({ id, limit }) => {
+      const service = new ExampleService()
+      const result = await service.getById(id)
+      if (!result.success || !result.data) {
+        return mapApiError(result.error, 'No se pudo obtener el ejemplo')
+      }
+      return ok({ items: [result.data], total: 1 }, `Ejemplo #${id} obtenido`)
+    },
+  )
 }
 ```
 
 ## Registration (`src/tools/index.ts`)
 
-1. Import tool + handler
-2. Add tool to `tools` array
-3. Add `case` in `handleToolCall` switch
+1. Export `registerX` from the tool file
+2. Add `registerX` to the `toolRegistrars` array in `registerAllTools`
 
 ## Rules
 
-- `name` in snake_case, unique and semantic
-- Descriptions must be rich — they drive agent tool selection
-- Always define full `inputSchema`; re-validate critical args in the handler
+- `name` in snake_case, unique and semantic; always set `title`
+- Rich `description` — drives agent tool selection; document tool chaining
+- Use Zod `inputSchema` / `outputSchema` (not raw JSON Schema)
+- Return `ok(structured, shortSummary)` — never dump full JSON into `content`
+- Use `fail` / `mapApiError` for stable error codes (`NOT_FOUND`, `VALIDATION_ERROR`, `UPSTREAM_ERROR`, `RATE_LIMITED`)
+- Set annotations: `readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint`
 - Always check `result.success` before returning data
 - Prefer researching the CRM endpoint first (`crm-endpoint-research` / `crm-api-researcher`) then implement via `mcp-tool-creator`

@@ -8,6 +8,18 @@
 
 ```
 Content-Type: application/json
+Accept: application/json, text/event-stream
+Authorization: Bearer mcp_live_TU_TOKEN
+```
+
+> **Auth obligatoria:** sin `Authorization: Bearer …` el servidor responde **401**.  
+> Genera un token con `npm run gen:token` y configúralo en `MCP_AUTH_TOKENS`.  
+> Ver [AUTHENTICATION.md](../security/AUTHENTICATION.md).
+
+Tras `initialize`, incluye también el header de sesión en las siguientes llamadas:
+
+```
+Mcp-Session-Id: <valor del header de la respuesta initialize>
 ```
 
 ## 1. Initialize (Conectar al servidor)

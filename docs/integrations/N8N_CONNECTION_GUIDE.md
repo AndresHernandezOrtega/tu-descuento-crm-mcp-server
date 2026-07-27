@@ -63,25 +63,28 @@ Transport Type: Streamable HTTP
 Base URL: https://mcp.tudescuento.com.co/mcp
 ```
 
-### Paso 3: Headers (Opcionales)
+### Paso 3: Headers (Obligatorio — autenticación)
 
-Si necesitas configurar headers adicionales:
+El MCP server exige un Bearer token por cliente. Genera uno con `npm run gen:token` y configúralo en `MCP_AUTH_TOKENS` del servidor.
 
 ```yaml
 Headers:
   - Name: Authorization
-    Value: Bearer tu_token_aqui (si aplica)
+    Value: Bearer mcp_live_TU_TOKEN
 ```
 
-**Nota:** El header `mcp-session-id` se maneja automáticamente por el protocolo.
+Sin este header recibirás **401 Unauthorized**. Ver [AUTHENTICATION.md](../security/AUTHENTICATION.md).
+
+**Nota:** El header `Mcp-Session-Id` se maneja automáticamente por el protocolo Streamable HTTP.
 
 ### Paso 4: Verificar Conexión
 
 1. Ejecuta el workflow en n8n
 2. El nodo debería:
-   - ✅ Establecer conexión SSE (GET /mcp)
-   - ✅ Recibir el `sessionId`
-   - ✅ Estar listo para enviar comandos
+   - ✅ Autenticarse con el Bearer token
+   - ✅ Completar `initialize` vía `POST /mcp`
+   - ✅ Recibir el `Mcp-Session-Id`
+   - ✅ Estar listo para enviar comandos (`tools/list`, `tools/call`, etc.)
 
 ## 🛠️ Comandos Disponibles
 

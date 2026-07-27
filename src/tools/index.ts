@@ -1,157 +1,39 @@
-import type { Tool, CallToolRequest } from '@modelcontextprotocol/sdk/types.js'
-import { getCostumerByIdentificationTool, handleGetCostumerByIdentification } from '@tools/costumers/costumer-information.js'
-import { getCategorieseTool, handleGetCategories } from '@tools/sales/categories.js'
-import { getPublicMembershipsTool, handleGetPublicMemberships, getMembershipDiscountsTool, handleGetMembershipDiscounts } from '@tools/sales/memberships.js'
-import { getAlliedCommerceTool, handleGetAlliedCommerce, getAlliedCommercesByCategoryTool, handleGetAlliedCommercesByCategory } from '@tools/sales/allied-commerces.js'
-import { getSupportLogsTool, handleGetSupportLogs, createSupportLogTool, handleCreateSupportLog } from '@tools/documentation/support-bot-log.js'
-import { createLeadTool, handleCreateLead } from '@tools/sales/leads.js'
-import { forgotPasswordTool, handleForgotPassword } from '@tools/costumers/forgot-password.js'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { registerGetCostumerByIdentification } from '@tools/costumers/costumer-information.js'
+import { registerForgotPassword } from '@tools/costumers/forgot-password.js'
+import { registerGetCategories } from '@tools/sales/categories.js'
+import { registerGetPublicMemberships, registerGetMembershipDiscounts } from '@tools/sales/memberships.js'
+import {
+  registerGetAlliedCommerce,
+  registerGetAlliedCommercesByCategory,
+} from '@tools/sales/allied-commerces.js'
+import { registerCreateLead } from '@tools/sales/leads.js'
+import { registerGetSupportLogs, registerCreateSupportLog } from '@tools/documentation/support-bot-log.js'
+
+type ToolRegistrar = (server: McpServer) => void
 
 /**
- * TOOLS DEL SERVIDOR MCP
- *
- * Aquí se definen todos los tools (herramientas) disponibles para el agente de IA.
- * Cada tool representa una función específica que el agente puede ejecutar.
- *
- * Estructura de un tool:
- * {
- *   name: 'nombre_del_tool',
- *   description: 'Descripción de lo que hace el tool',
- *   inputSchema: {
- *     type: 'object',
- *     properties: {
- *       parametro1: {
- *         type: 'string',
- *         description: 'Descripción del parámetro',
- *       },
- *     },
- *     required: ['parametro1'],
- *   },
- * }
- *
- * Para crear nuevos tools:
- * 1. Crea un archivo en src/services/ para la lógica del servicio
- * 2. Extiende BaseService para tener acceso a los métodos HTTP
- * 3. Define el tool en el array 'tools' abajo
- * 4. Implementa el handler en la función 'handleToolCall'
+ * Lista de registradores de tools.
+ * Cada función llama a server.registerTool(...) con Zod, annotations y outputSchema.
  */
-
-// Array de tools disponibles
-export const tools: Tool[] = [
-  getCostumerByIdentificationTool,
-  getCategorieseTool,
-  getPublicMembershipsTool,
-  getMembershipDiscountsTool,
-  getAlliedCommerceTool,
-  getAlliedCommercesByCategoryTool,
-  getSupportLogsTool,
-  createSupportLogTool,
-  createLeadTool,
-  forgotPasswordTool,
-  // Aquí se agregarán los tools del CRM de TuDescuento
-  // Ejemplo:
-  // {
-  //   name: 'get_ai_agents',
-  //   description: 'Obtiene la lista de agentes de IA disponibles',
-  //   inputSchema: {
-  //     type: 'object',
-  //     properties: {
-  //       page: {
-  //         type: 'number',
-  //         description: 'Número de página',
-  //         default: 1,
-  //       },
-  //     },
-  //   },
-  // },
+const toolRegistrars: ToolRegistrar[] = [
+  registerGetCostumerByIdentification,
+  registerForgotPassword,
+  registerGetCategories,
+  registerGetPublicMemberships,
+  registerGetMembershipDiscounts,
+  registerGetAlliedCommerce,
+  registerGetAlliedCommercesByCategory,
+  registerGetSupportLogs,
+  registerCreateSupportLog,
+  registerCreateLead,
 ]
 
 /**
- * Handler principal para ejecutar tools
- * Recibe una petición de ejecución y delega al handler correspondiente
+ * Registra todas las tools MCP en la instancia de McpServer.
  */
-export async function handleToolCall(request: CallToolRequest) {
-  const { name, arguments: args } = request.params
-
-  switch (name) {
-    case 'get_costumer_by_identification': {
-      const { numero_identificacion } = args as { numero_identificacion: string }
-      return await handleGetCostumerByIdentification(numero_identificacion)
-    }
-
-    case 'get_categories': {
-      return await handleGetCategories()
-    }
-
-    case 'get_public_memberships': {
-      return await handleGetPublicMemberships()
-    }
-
-    case 'get_membership_discounts': {
-      return await handleGetMembershipDiscounts(args)
-    }
-
-    case 'get_allied_commerce': {
-      return await handleGetAlliedCommerce(args)
-    }
-
-    case 'get_allied_commerces_by_category': {
-      return await handleGetAlliedCommercesByCategory(args)
-    }
-
-    case 'get_support_logs': {
-      return await handleGetSupportLogs(args)
-    }
-
-    case 'create_support_log': {
-      return await handleCreateSupportLog(args)
-    }
-
-    case 'create_lead': {
-      return await handleCreateLead(args)
-    }
-
-    case 'forgot_password': {
-      return await handleForgotPassword(args)
-    }
-
-    // Aquí se agregarán los casos para cada tool
-    // Ejemplo:
-    // case 'get_ai_agents': {
-    //   const { page = 1 } = args as any
-    //   const result = await aiAgentService.getAgents(page)
-    //
-    //   if (!result.success) {
-    //     return {
-    //       content: [
-    //         {
-    //           type: 'text' as const,
-    //           text: `Error: ${result.error?.message}`,
-    //         },
-    //       ],
-    //       isError: true,
-    //     }
-    //   }
-    //
-    //   return {
-    //     content: [
-    //       {
-    //         type: 'text' as const,
-    //         text: JSON.stringify(result.data, null, 2),
-    //       },
-    //     ],
-    //   }
-    // }
-
-    default:
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Tool desconocido: ${name}`,
-          },
-        ],
-        isError: true,
-      }
+export function registerAllTools(server: McpServer): void {
+  for (const register of toolRegistrars) {
+    register(server)
   }
 }

@@ -1,215 +1,157 @@
-import type { Tool } from '@modelcontextprotocol/sdk/types.js'
+import { z } from 'zod'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { AlliedCommerceService } from '@services/allied-commerce-service.js'
 import { CategoriesService } from '@services/categories-service.js'
+import { ok, fail, mapApiError, applyLimit } from '@tools/tool-result.js'
 
-/**
- * Tool para obtener información detallada de un comercio aliado
- */
-export const getAlliedCommerceTool: Tool = {
-  name: 'get_allied_commerce',
-  description:
-    'Obtiene información detallada de un comercio aliado (marca o empresa) que ofrece descuentos especiales ' +
-    'a los clientes de Tu Descuento Colombia. Proporciona información sobre la empresa incluyendo: código, ' +
-    'razón social, teléfono, email, dirección principal, descripción de la actividad comercial (puede incluir ' +
-    'ubicaciones de sucursales y contactos adicionales) y lista de descuentos que ofrece. ' +
-    'Para usar este tool, necesitas el ID del comercio aliado obtenido de consultas previas de descuentos o membresías.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      allied_commerce_id: {
-        type: 'number',
-        description: 'ID del comercio aliado del cual se desea obtener información',
-      },
-    },
-    required: ['allied_commerce_id'],
-  },
+const commerceInputSchema = {
+  allied_commerce_id: z
+    .number()
+    .int()
+    .positive()
+    .describe(
+      'ID del comercio aliado. Obtenerlo de get_membership_discounts (allied_commerce) o get_allied_commerces_by_category. Ejemplo: 12',
+    ),
 }
 
-/**
- * Handler para ejecutar la obtención de información de un comercio aliado
- */
-export async function handleGetAlliedCommerce(args: any) {
-  const alliedCommerceId = args.allied_commerce_id
+const commerceOutputSchema = {
+  code: z.string().optional(),
+  razon_social: z.string().optional(),
+  telefono: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  direccion_domicilio_principal: z.string().nullable().optional(),
+  descripcion: z.string().nullable().optional(),
+  discounts: z.array(z.unknown()).optional(),
+}
 
-  if (!alliedCommerceId || typeof alliedCommerceId !== 'number') {
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: 'Error: El parámetro allied_commerce_id es requerido y debe ser un número',
-        },
-      ],
-      isError: true,
-    }
-  }
-
-  const alliedCommerceService = new AlliedCommerceService()
-  const result = await alliedCommerceService.getAlliedCommerceById(alliedCommerceId)
-
-  if (!result.success || !result.data) {
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: result.error?.message || `No se pudo obtener la información del comercio aliado ${alliedCommerceId}`,
-        },
-      ],
-      isError: true,
-    }
-  }
-
-  const commerce = result.data.alliedCommerce
-
-  // Formatear la respuesta mostrando solo la información permitida
-  let responseText = `📍 Información del Comercio Aliado\n\n`
-  responseText += `🏢 Razón Social: ${commerce.razon_social}\n`
-  responseText += `🔖 Código: ${commerce.code}\n`
-  responseText += `📞 Teléfono: ${commerce.telefono}\n`
-  responseText += `📧 Email: ${commerce.email}\n`
-  responseText += `📍 Dirección: ${commerce.direccion_domicilio_principal}\n\n`
-  responseText += `📝 Descripción:\n${commerce.descripcion}\n\n`
-
-  // Mostrar descuentos disponibles
-  if (commerce.discounts && commerce.discounts.length > 0) {
-    responseText += `🎁 Descuentos Ofrecidos (${commerce.discounts.length}):\n\n`
-    commerce.discounts.forEach((discount, index) => {
-      responseText += `${index + 1}. ${discount.nombre}\n`
-      responseText += `   - Tipo: ${discount.tipo_beneficio}\n`
-
-      if (discount.tipo_beneficio === 'PORCENTAJE' && discount.porcentaje !== null) {
-        responseText += `   - Descuento: ${discount.porcentaje}%\n`
-      } else if (discount.tipo_beneficio === 'VALOR_FIJO' && discount.valor_fijo !== null) {
-        responseText += `   - Precio fijo: $${discount.valor_fijo.toLocaleString('es-CO')}\n`
+export function registerGetAlliedCommerce(server: McpServer): void {
+  server.registerTool(
+    'get_allied_commerce',
+    {
+      title: 'Detalle de comercio aliado',
+      description:
+        'Obtiene información detallada de un comercio aliado (marca/empresa) que ofrece descuentos: ' +
+        'código, razón social, teléfono, email, dirección, descripción y descuentos. ' +
+        'Para obtener el allied_commerce_id usa get_membership_discounts o get_allied_commerces_by_category.',
+      inputSchema: commerceInputSchema,
+      outputSchema: commerceOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async ({ allied_commerce_id }) => {
+      if (!allied_commerce_id) {
+        return fail('VALIDATION_ERROR', 'allied_commerce_id es requerido y debe ser un número positivo')
       }
 
-      responseText += `   - Descripción: ${discount.descripcion}\n`
-      responseText += `   - Estado: ${discount.activo ? '✅ Activo' : '❌ Inactivo'}\n\n`
-    })
-  } else {
-    responseText += `🎁 Este comercio no tiene descuentos registrados actualmente.\n\n`
-  }
+      const service = new AlliedCommerceService()
+      const result = await service.getAlliedCommerceById(allied_commerce_id)
 
-  // Incluir solo los datos permitidos en formato JSON
-  const filteredData = {
-    code: commerce.code,
-    razon_social: commerce.razon_social,
-    telefono: commerce.telefono,
-    email: commerce.email,
-    direccion_domicilio_principal: commerce.direccion_domicilio_principal,
-    descripcion: commerce.descripcion,
-    discounts: commerce.discounts,
-  }
+      if (!result.success || !result.data) {
+        return mapApiError(result.error, `No se pudo obtener el comercio aliado ${allied_commerce_id}`)
+      }
 
-  responseText += '\n--- Datos completos en JSON ---\n'
-  responseText += JSON.stringify(filteredData, null, 2)
+      const commerce = result.data.alliedCommerce
+      const filtered = {
+        code: commerce.code,
+        razon_social: commerce.razon_social,
+        telefono: commerce.telefono,
+        email: commerce.email,
+        direccion_domicilio_principal: commerce.direccion_domicilio_principal,
+        descripcion: commerce.descripcion,
+        discounts: commerce.discounts,
+      }
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: responseText,
-      },
-    ],
-  }
+      const discountCount = commerce.discounts?.length ?? 0
+      const summary =
+        `${commerce.razon_social} (${commerce.code})\n` +
+        `Tel: ${commerce.telefono ?? 'N/A'} | Email: ${commerce.email ?? 'N/A'}\n` +
+        `Dirección: ${commerce.direccion_domicilio_principal ?? 'N/A'}\n` +
+        `Descuentos: ${discountCount}`
+
+      return ok(filtered, summary)
+    },
+  )
 }
 
-/**
- * Tool para obtener comercios aliados por categoría
- */
-export const getAlliedCommercesByCategoryTool: Tool = {
-  name: 'get_allied_commerces_by_category',
-  description:
-    'Obtiene todos los comercios aliados que ofrecen descuentos dentro de una categoría específica de Tu Descuento Colombia. ' +
-    'Proporciona información de la categoría junto con la lista completa de comercios aliados, incluyendo para cada comercio: ' +
-    'código, razón social, teléfono, email, dirección, descripción y todos los descuentos disponibles en esa categoría. ' +
-    'Este tool es útil para cuando un cliente busca descuentos en una categoría particular (ej: restaurantes, productos, servicios). ' +
-    'Para usar este tool, necesitas el ID de la categoría obtenido previamente mediante get_categories.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      category_id: {
-        type: 'number',
-        description: 'ID de la categoría para la cual se desean obtener los comercios aliados',
+const byCategoryInputSchema = {
+  category_id: z
+    .number()
+    .int()
+    .positive()
+    .describe('ID de la categoría (obtenerlo con get_categories). Ejemplo: 3'),
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe('Máximo de comercios a devolver (opcional).'),
+}
+
+const byCategoryOutputSchema = {
+  category: z.object({
+    id: z.number().optional(),
+    name: z.string().optional(),
+    descripcion: z.string().optional(),
+  }),
+  allied_commerces: z.array(z.unknown()),
+  total: z.number(),
+  truncated: z.boolean(),
+}
+
+export function registerGetAlliedCommercesByCategory(server: McpServer): void {
+  server.registerTool(
+    'get_allied_commerces_by_category',
+    {
+      title: 'Comercios aliados por categoría',
+      description:
+        'Obtiene los comercios aliados que ofrecen descuentos en una categoría específica. ' +
+        'Útil cuando el cliente busca descuentos en un rubro (restaurantes, salud, etc.). ' +
+        'Primero obtén el category_id con get_categories. Para detalle de un comercio usa get_allied_commerce.',
+      inputSchema: byCategoryInputSchema,
+      outputSchema: byCategoryOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
       },
     },
-    required: ['category_id'],
-  },
-}
+    async ({ category_id, limit }) => {
+      if (!category_id) {
+        return fail('VALIDATION_ERROR', 'category_id es requerido y debe ser un número positivo')
+      }
 
-/**
- * Handler para ejecutar la obtención de comercios aliados por categoría
- */
-export async function handleGetAlliedCommercesByCategory(args: any) {
-  const categoryId = args.category_id
+      const service = new CategoriesService()
+      const result = await service.getAlliedCommercesByCategory(category_id)
 
-  if (!categoryId || typeof categoryId !== 'number') {
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: 'Error: El parámetro category_id es requerido y debe ser un número',
-        },
-      ],
-      isError: true,
-    }
-  }
+      if (!result.success || !result.data) {
+        return mapApiError(result.error, `No se pudieron obtener comercios de la categoría ${category_id}`)
+      }
 
-  const categoriesService = new CategoriesService()
-  const result = await categoriesService.getAlliedCommercesByCategory(categoryId)
+      const category = result.data.category
+      const { items, total, truncated } = applyLimit(category.allied_commerces, limit)
 
-  if (!result.success || !result.data) {
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: result.error?.message || `No se pudieron obtener los comercios aliados de la categoría ${categoryId}`,
-        },
-      ],
-      isError: true,
-    }
-  }
-
-  const category = result.data.category
-  const commerces = category.allied_commerces
-
-  // Formatear la respuesta
-  let responseText = `📁 Categoría: ${category.name}\n`
-  responseText += `📝 Descripción: ${category.descripcion}\n\n`
-  responseText += `🏢 Se encontraron ${commerces.length} comercio(s) aliado(s) en esta categoría:\n\n`
-
-  commerces.forEach((commerce, index) => {
-    responseText += `${index + 1}. ${commerce.razon_social} (ID: ${commerce.id})\n`
-    responseText += `   📞 Teléfono: ${commerce.telefono}\n`
-    responseText += `   📧 Email: ${commerce.email}\n`
-    responseText += `   📍 Dirección: ${commerce.direccion_domicilio_principal}\n`
-    responseText += `   📝 Descripción: ${commerce.descripcion}\n`
-
-    if (commerce.discounts && commerce.discounts.length > 0) {
-      responseText += `   🎁 Descuentos (${commerce.discounts.length}):\n`
-      commerce.discounts.forEach((discount) => {
-        responseText += `      • ${discount.nombre}: `
-        if (discount.tipo_beneficio === 'PORCENTAJE' && discount.porcentaje !== null) {
-          responseText += `${discount.porcentaje}% de descuento`
-        } else if (discount.tipo_beneficio === 'VALOR_FIJO' && discount.valor_fijo !== null) {
-          responseText += `Precio fijo $${discount.valor_fijo.toLocaleString('es-CO')}`
-        }
-        responseText += ` ${discount.activo ? '✅' : '❌'}\n`
+      const lines = items.slice(0, 12).map((c, i) => {
+        return `${i + 1}. ${c.razon_social} (ID: ${c.id}) — ${c.discounts?.length ?? 0} descuento(s)`
       })
-    } else {
-      responseText += `   🎁 Sin descuentos registrados\n`
-    }
-    responseText += '\n'
-  })
 
-  responseText += '\n--- Datos completos en JSON ---\n'
-  responseText += JSON.stringify(result.data, null, 2)
+      const summary =
+        `Categoría: ${category.name}\n` +
+        `Comercios: ${items.length} de ${total}${truncated ? ' (truncado)' : ''}\n` +
+        lines.join('\n') +
+        (total > 12 ? `\n… y ${total - 12} más en structuredContent` : '')
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: responseText,
-      },
-    ],
-  }
+      return ok(
+        {
+          category: { id: category.id, name: category.name, descripcion: category.descripcion },
+          allied_commerces: items,
+          total,
+          truncated,
+        },
+        summary,
+      )
+    },
+  )
 }
