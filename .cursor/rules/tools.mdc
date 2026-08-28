@@ -9,13 +9,21 @@ alwaysApply: false
 Every tool exports a **`registerX(server: McpServer)`** function that calls `server.registerTool(...)`.
 Registration is centralized in `src/tools/index.ts` via `registerAllTools`.
 
-## Modules
+## Entity folders
 
-Place tools under domain folders:
+Place tools under CRM entity folders (not agent modules). Path: `src/tools/<entity>/<tool-kebab>.ts`.
 
-- `costumers/` — customer lookups and account actions
-- `sales/` — memberships, discounts, leads, allied commerces, categories
-- `documentation/` — support logs / operational traceability
+Canonical folders:
+
+- `auth/` — password/auth flows (`AuthService`)
+- `costumers/` — customer lookups (`CostumerService`; historical spelling)
+- `leads/` — lead/prospect operations
+- `memberships/` — memberships and membership discounts
+- `categories/` — discount categories
+- `allied-commerces/` — allied commerce lookups
+- `support-logs/` — support/sales case logs
+
+**One `registerTool` per file** — do not put distinct operations in the same `.ts`. Choose the folder by the primary service/entity the tool calls.
 
 ## Definition (Zod + annotations)
 

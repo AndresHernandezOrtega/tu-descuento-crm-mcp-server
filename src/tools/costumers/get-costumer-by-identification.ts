@@ -4,12 +4,7 @@ import { CostumerService } from '@services/costumer-service.js'
 import { ok, mapApiError } from '@tools/tool-result.js'
 
 const inputSchema = {
-  numero_identificacion: z
-    .string()
-    .min(1)
-    .describe(
-      'Número de documento de identificación del cliente (cédula, NIT, pasaporte) sin puntos, guiones ni espacios. Ejemplo: 1234567890',
-    ),
+  numero_identificacion: z.string().min(1).describe('Número de documento de identificación del cliente (cédula, NIT, pasaporte) sin puntos, guiones ni espacios. Ejemplo: 1234567890'),
 }
 
 const outputSchema = {
@@ -43,10 +38,7 @@ export function registerGetCostumerByIdentification(server: McpServer): void {
       const payload = result.data as Record<string, unknown>
       const c = (payload.costumer ?? payload.client ?? payload) as Record<string, unknown>
       const name = [c.primer_nombre, c.primer_apellido].filter(Boolean).join(' ') || 'Cliente'
-      const summary =
-        `Cliente encontrado: ${name}\n` +
-        `Identificación: ${c.numero_identificacion ?? numero_identificacion}\n` +
-        `Email: ${c.email ?? 'N/A'} | Celular: ${c.celular ?? 'N/A'}`
+      const summary = `Cliente encontrado: ${name}\n` + `Identificación: ${c.numero_identificacion ?? numero_identificacion}\n` + `Email: ${c.email ?? 'N/A'} | Celular: ${c.celular ?? 'N/A'}`
 
       return ok({ costumer: result.data }, summary)
     },

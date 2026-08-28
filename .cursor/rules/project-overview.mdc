@@ -42,7 +42,7 @@ import { BaseService } from '@services/base-service.js'
 1. `src/types/entities/[entity].ts`
 2. Export in `src/types/index.ts`
 3. `src/services/[entity]-service.ts`
-4. `src/tools/[module]/[tool].ts` — export `registerX(server)`
+4. `src/tools/[entity]/[tool].ts` — export `registerX(server)` (one tool per file)
 5. Add registrar to `src/tools/index.ts` → `registerAllTools`
 
 Prefer the `mcp-tool-creator` skill and `crm-api-researcher` / `mcp-tool-builder` subagents when implementing CRM-backed tools.

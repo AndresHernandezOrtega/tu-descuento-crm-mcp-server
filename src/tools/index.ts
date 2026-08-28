@@ -1,14 +1,14 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { registerGetCostumerByIdentification } from '@tools/costumers/costumer-information.js'
-import { registerForgotPassword } from '@tools/costumers/forgot-password.js'
-import { registerGetCategories } from '@tools/sales/categories.js'
-import { registerGetPublicMemberships, registerGetMembershipDiscounts } from '@tools/sales/memberships.js'
-import {
-  registerGetAlliedCommerce,
-  registerGetAlliedCommercesByCategory,
-} from '@tools/sales/allied-commerces.js'
-import { registerCreateLead } from '@tools/sales/leads.js'
-import { registerGetSupportLogs, registerCreateSupportLog } from '@tools/documentation/support-bot-log.js'
+import { registerGetCostumerByIdentification } from '@tools/costumers/get-costumer-by-identification.js'
+import { registerForgotPassword } from '@tools/auth/forgot-password.js'
+import { registerGetCategories } from '@tools/categories/get-categories.js'
+import { registerGetPublicMemberships } from '@tools/memberships/get-public-memberships.js'
+import { registerGetMembershipDiscounts } from '@tools/memberships/get-membership-discounts.js'
+import { registerGetAlliedCommerce } from '@tools/allied-commerces/get-allied-commerce.js'
+import { registerGetAlliedCommercesByCategory } from '@tools/allied-commerces/get-allied-commerces-by-category.js'
+import { registerCreateLead } from '@tools/leads/create-lead.js'
+import { registerGetSupportLogs } from '@tools/support-logs/get-support-logs.js'
+import { registerCreateSupportLog } from '@tools/support-logs/create-support-log.js'
 
 type ToolRegistrar = (server: McpServer) => void
 

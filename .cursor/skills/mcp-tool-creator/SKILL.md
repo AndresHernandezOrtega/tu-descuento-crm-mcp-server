@@ -72,26 +72,22 @@ Para orquestación end-to-end (research + implementación), preferir el subagent
    - Limpiar payload de opcionales vacíos cuando aplique (patrón de `lead-service.ts`).
    - Retornar `Promise<ApiResponse<T>>` siempre.
 
-5. Crear el tool en `src/tools/<modulo>/<archivo>.ts`.
-   - Definir const Tool con:
-     - `name`
-     - `description` rica en intención y casos de uso
-     - `inputSchema` con `properties` + `required`
+5. Crear el tool en `src/tools/<entity>/<tool-kebab>.ts` (un `registerTool` por archivo).
+   - Exportar `registerX(server: McpServer)` que llame a `server.registerTool(...)`.
+   - Definir `title`, `description`, `inputSchema` y `outputSchema` con Zod.
    - Implementar handler async:
      - validar argumentos (tipo y presencia)
      - llamar al service
-     - manejar error con `isError: true`
-     - devolver success con content type `text`
+     - retornar `ok(...)` en éxito o `fail` / `mapApiError` en error
    - En errores, incluir mensaje claro y accionable.
 
 6. Registrar el tool en `src/tools/index.ts`.
-   - Agregar import del Tool y del handler.
-   - Incluir Tool en el array `tools`.
-   - Agregar `case` en `handleToolCall` para delegar al handler correcto.
+   - Importar `registerX` desde el archivo del tool.
+   - Agregar `registerX` al array `toolRegistrars`.
 
 7. Validar exposición MCP (sin tocar `server.ts` salvo casos excepcionales).
-   - Confirmar que `tools/list` incluirá el nuevo tool por estar en el array `tools`.
-   - Confirmar que `tools/call` lo enruta por el switch de `handleToolCall`.
+   - Confirmar que `tools/list` incluirá el nuevo tool por estar en `toolRegistrars`.
+   - Confirmar que `tools/call` lo ejecuta vía `registerAllTools` → `server.registerTool`.
 
 8. Verificar calidad técnica.
    - Ejecutar `npm run build`.
@@ -113,9 +109,9 @@ Para orquestación end-to-end (research + implementación), preferir el subagent
   - Repetir validaciones críticas en handler para seguridad defensiva.
 
 - ¿Dónde ubicar el tool?
-  - `costumers`: consultas de cliente.
-  - `sales`: procesos comerciales/descuentos/membresías/leads.
-  - `documentation`: registro y trazabilidad operativa.
+  - Carpeta = entidad CRM / service primario (no módulo de agente).
+  - Carpetas canónicas: `auth/`, `costumers/`, `leads/`, `memberships/`, `categories/`, `allied-commerces/`, `support-logs/`.
+  - Un archivo por operación: `src/tools/<entity>/<verb-noun>.ts`.
 
 ## Criterios de completitud
 
@@ -133,8 +129,8 @@ Para orquestación end-to-end (research + implementación), preferir el subagent
 - [ ] Tipos nuevos o ajustados en `src/types/entities`
 - [ ] Export en `src/types/index.ts`
 - [ ] Servicio nuevo/actualizado en `src/services`
-- [ ] Tool + handler implementados en `src/tools/...`
-- [ ] Registro en `src/tools/index.ts` (imports, array, switch)
+- [ ] Tool implementado en `src/tools/<entity>/<tool>.ts` (un tool por archivo)
+- [ ] Registro en `src/tools/index.ts` (import + `toolRegistrars`)
 - [ ] Build exitoso con `npm run build`
 - [ ] Test JSON-RPC manual en `/mcp`
 

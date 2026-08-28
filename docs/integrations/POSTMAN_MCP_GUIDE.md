@@ -5,12 +5,18 @@
 - Postman versión 11+ (con soporte nativo para MCP)
 - Servidor MCP corriendo en `http://localhost:3000`
 
-## Paso 1: Crear una Nueva Request MCP en Postman
+## Paso 1: Abrir el MCP Live Client de la collection
 
-1. Abre Postman
-2. Click en **"New"** → **"HTTP"** o click en el botón **"+"**
-3. En el dropdown junto al método (GET/POST), busca y selecciona **"MCP"** como tipo de request
-4. Si no ves la opción MCP, asegúrate de tener Postman 11+ o actualiza
+En la collection **(TuDescuento) MCP Server - AI Agent** hay una request en la **raíz** llamada **`MCP Live Client`**.
+
+1. Abre esa request (coexiste con las docs HTTP bajo `Tools/` y `00 - Sesion y Auth`).
+2. Si aparece como HTTP: en el dropdown de protocolo selecciona **MCP**.
+3. Transport: **HTTP** (streamable).
+4. URL: `{{mcp_base_url}}/mcp` (variable de collection, default `http://localhost:3000/mcp`).
+5. Authorization: Bearer Token = `{{mcp_token}}` (token de `MCP_AUTH_TOKENS`).
+6. **Load Capabilities** / Connect → pestaña Tools para listar y ejecutar.
+
+Alternativa desde cero: **New** → **MCP** → misma URL y auth → **Save** en esta collection (raíz).
 
 ## Paso 2: Configurar la Conexión
 

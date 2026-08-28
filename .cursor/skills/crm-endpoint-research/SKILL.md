@@ -68,7 +68,7 @@ El MCP `plugin-postman-postman` requiere API key válida.
 - **successResponse**: ... (example shape)
 - **errorNotes**: ...
 - **suggestedToolName**: snake_case
-- **suggestedModule**: costumers | sales | documentation
+- **suggestedEntity**: auth | costumers | leads | memberships | categories | allied-commerces | support-logs
 - **existingService**: path if reusable, else "new"
 ```
 

@@ -48,31 +48,33 @@ Never invent tool names or schemas. Read:
 ## Target folder structure in the collection
 
 ```
+MCP Live Client          ← cliente vivo (raiz; convertir a tipo MCP en Postman 11+)
 00 - Sesion y Auth
-  - 01 initialize
-  - 02 notifications/initialized
-  - 03 tools/list
-  - 04 DELETE /mcp (cerrar sesion)
-  - 05 GET /health
-  - 90 Error: sin token (401)
-Tools / costumers
-  - get_costumer_by_identification
-  - forgot_password
-Tools / sales
-  - get_categories
-  - get_public_memberships
-  - get_membership_discounts
-  - get_allied_commerce
-  - get_allied_commerces_by_category
-  - create_lead
-Tools / documentation
-  - get_support_logs
-  - create_support_log
+Tools
+  - auth
+    - forgot_password
+  - costumers
+    - get_costumer_by_identification
+  - leads
+    - create_lead
+  - memberships
+    - get_public_memberships
+    - get_membership_discounts
+  - categories
+    - get_categories
+  - allied-commerces
+    - get_allied_commerce
+    - get_allied_commerces_by_category
+  - support-logs
+    - get_support_logs
+    - create_support_log
 Prompts
 Resources
 ```
 
-Subfolders under `Tools / …` mirror `src/tools/` modules (`costumers/`, `sales/`, `documentation/`).
+Parent folder is always `Tools`. Subfolders mirror `src/tools/` entity folders (not agent modules). Never create flat folders named `Tools / sales` at collection root.
+
+At collection **root**, always keep a request named **`MCP Live Client`** pointing to `{{mcp_base_url}}/mcp` with Bearer `{{mcp_token}}`. It coexists with the HTTP documentation requests. The Postman Public API cannot create native MCP protocol items—create/update it as HTTP Streamable and document that the user (or documenter) should switch the protocol dropdown to **MCP** in Postman 11+ for the live Tools UI. Do not remove or replace the per-tool HTTP docs under `Tools/`.
 
 If the user scopes the run (e.g. “solo get_categories”), only create/update that folder + request + responses; still ensure parent folders and collection variables exist.
 
@@ -138,7 +140,7 @@ Every tool request description MUST use this markdown structure (Spanish):
 ## <tool_name>
 
 **Title:** <title>
-**Modulo:** sales | costumers | documentation
+**Entidad:** auth | costumers | leads | memberships | categories | allied-commerces | support-logs
 
 ### Cuando usarla
 
@@ -216,7 +218,7 @@ Discover schemas with `GetMcpTools` for `plugin-postman-postman` if needed. Typi
 
 ## Workflow
 
-1. Read `src/tools/index.ts` and each tool module; extract name, title, description, schemas, annotations, module folder.
+1. Read `src/tools/index.ts` and each tool file; extract name, title, description, schemas, annotations, entity folder.
 2. Call `getCollection` for `16285310-6693942e-4dfa-4a81-a981-23401dd2fac0`.
 3. Diff: tools in code missing in Postman; tools in Postman missing in code (orphans).
 4. Create missing folders; create or update requests; attach descriptions per the template.

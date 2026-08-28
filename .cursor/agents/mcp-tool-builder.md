@@ -41,10 +41,10 @@ Also respect project rules under `.cursor/rules/` (services, types, tools, proje
 1. Types: `src/types/entities/<entity>.ts` (+ wrappers).
 2. Export: `src/types/index.ts`.
 3. Service: extend `BaseService`, return `ApiResponse<T>`, aliases + `.js` imports.
-4. Tool: `src/tools/<module>/<file>.ts` (definition + handler, `isError` handling).
-5. Register: import, `tools` array, `handleToolCall` case in `src/tools/index.ts`.
+4. Tool: `src/tools/<entity>/<file>.ts` — export `registerX(server)` (one tool per file).
+5. Register: import `registerX` and add to `toolRegistrars` in `src/tools/index.ts`.
 
-Modules: `costumers` | `sales` | `documentation`.
+Entities: `auth` | `costumers` | `leads` | `memberships` | `categories` | `allied-commerces` | `support-logs`.
 
 ### Phase C — Verify
 
