@@ -8,7 +8,7 @@ const inputSchema = {
     .number()
     .int()
     .positive()
-    .describe('ID de la membresía (obtenerlo antes con get_public_memberships). Ejemplo: 1'),
+    .describe('ID de la membresía (obtenerlo antes con get_memberships). Ejemplo: 1'),
   limit: z
     .number()
     .int()
@@ -33,7 +33,7 @@ export function registerGetMembershipDiscounts(server: McpServer): void {
         'Obtiene los descuentos incluidos en una membresía específica. ' +
         'IMPORTANTE — tipos según "tipo_beneficio": ' +
         '"PORCENTAJE" usa el campo "porcentaje"; "VALOR_FIJO" usa el campo "valor_fijo" (precio fijo). ' +
-        'Primero obtén el membership_id con get_public_memberships. ' +
+        'Primero obtén el membership_id con get_memberships. ' +
         'Para detalle de un comercio, usa get_allied_commerce con el ID del comercio aliado del descuento.',
       inputSchema,
       outputSchema,

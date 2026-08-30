@@ -113,7 +113,7 @@ Una vez conectado, puedes usar cualquiera de estos comandos MCP:
         "inputSchema": { ... }
       },
       {
-        "name": "get_public_memberships",
+        "name": "get_memberships",
         "description": "Obtiene todas las membresías disponibles para venta pública",
         "inputSchema": { ... }
       },
@@ -131,7 +131,7 @@ Una vez conectado, puedes usar cualquiera de estos comandos MCP:
 {
   "method": "tools/call",
   "params": {
-    "name": "get_public_memberships",
+    "name": "get_memberships",
     "arguments": {}
   }
 }
@@ -284,7 +284,7 @@ Nodes:
      - Transport: Streamable HTTP
      - URL: http://localhost:3000/mcp
      - Method: tools/call
-     - Tool Name: get_public_memberships
+     - Tool Name: get_memberships
      - Arguments: {}
   3. Code (Procesar Respuesta)
      - Extraer datos de membresías

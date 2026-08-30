@@ -123,7 +123,7 @@ Ejecuta una herramienta específica.
   "id": 3,
   "method": "tools/call",
   "params": {
-    "name": "get_public_memberships",
+    "name": "get_memberships",
     "arguments": {}
   }
 }
@@ -200,7 +200,7 @@ curl -X POST http://localhost:3000/mcp \
 curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -H "mcp-session-id: 12345678-1234-1234-1234-123456789abc" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_public_memberships","arguments":{}}}'
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_memberships","arguments":{}}}'
 ```
 
 ## Uso con PowerShell

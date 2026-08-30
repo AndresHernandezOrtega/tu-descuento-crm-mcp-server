@@ -1,28 +1,33 @@
 import { BaseService } from '@services/base-service.js'
-import type { ApiResponse, PublicMembershipsResponse, MembershipDiscountsResponse } from '@/types/index.js'
+import type { ApiResponse, MembershipsResponse, MembershipDiscountsResponse } from '@/types/index.js'
 
 /**
  * Servicio para gestionar membresías del CRM
  *
  * Endpoints disponibles:
- * - GET /memberships/public - Obtener membresías públicas disponibles para venta
- * - GET /memberships/{membership_id}/discounts - Obtener descuentos de una membresía específica
+ * - GET /memberships/public - Membresías con is_venta_publico = true
+ * - GET /memberships - Todas las membresías (públicas e internas)
+ * - GET /memberships/{membership_id}/discounts - Descuentos de una membresía
  */
 export class MembershipService extends BaseService {
   /**
-   * Obtener todas las membresías públicas disponibles para venta
-   *
-   * @returns Lista de membresías disponibles para el público con sus categorías incluidas
+   * Obtener membresías públicas disponibles para venta
    */
-  async getPublicMemberships(): Promise<ApiResponse<PublicMembershipsResponse>> {
-    return this.get<PublicMembershipsResponse>('/memberships/public')
+  async getPublicMemberships(): Promise<ApiResponse<MembershipsResponse>> {
+    return this.get<MembershipsResponse>('/memberships/public')
+  }
+
+  /**
+   * Obtener todas las membresías (públicas e internas), con categorías y descuentos anidados
+   */
+  async getMemberships(): Promise<ApiResponse<MembershipsResponse>> {
+    return this.get<MembershipsResponse>('/memberships')
   }
 
   /**
    * Obtener los descuentos incluidos en una membresía específica
    *
    * @param membershipId - ID de la membresía
-   * @returns Lista de descuentos con información del comercio aliado que los ofrece
    */
   async getMembershipDiscounts(membershipId: number): Promise<ApiResponse<MembershipDiscountsResponse>> {
     return this.get<MembershipDiscountsResponse>(`/memberships/${membershipId}/discounts`)

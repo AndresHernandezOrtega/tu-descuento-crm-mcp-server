@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { registerGetCostumerByIdentification } from '@tools/costumers/get-costumer-by-identification.js'
 import { registerForgotPassword } from '@tools/auth/forgot-password.js'
 import { registerGetCategories } from '@tools/categories/get-categories.js'
-import { registerGetPublicMemberships } from '@tools/memberships/get-public-memberships.js'
+import { registerGetMemberships } from '@tools/memberships/get-memberships.js'
 import { registerGetMembershipDiscounts } from '@tools/memberships/get-membership-discounts.js'
 import { registerGetAlliedCommerce } from '@tools/allied-commerces/get-allied-commerce.js'
 import { registerGetAlliedCommercesByCategory } from '@tools/allied-commerces/get-allied-commerces-by-category.js'
@@ -20,7 +20,7 @@ const toolRegistrars: ToolRegistrar[] = [
   registerGetCostumerByIdentification,
   registerForgotPassword,
   registerGetCategories,
-  registerGetPublicMemberships,
+  registerGetMemberships,
   registerGetMembershipDiscounts,
   registerGetAlliedCommerce,
   registerGetAlliedCommercesByCategory,

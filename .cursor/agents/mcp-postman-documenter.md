@@ -58,7 +58,7 @@ Tools
   - leads
     - create_lead
   - memberships
-    - get_public_memberships
+    - get_memberships
     - get_membership_discounts
   - categories
     - get_categories

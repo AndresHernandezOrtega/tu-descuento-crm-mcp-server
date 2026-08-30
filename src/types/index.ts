@@ -27,7 +27,13 @@ export type { Lead, CreateLeadDto, UpdateLeadDto, CreateLeadResponse, LeadsListR
 export type { Costumer } from './entities/costumer.js'
 export type { Contract } from './entities/contract.js'
 export type { Municipalitie, TypeDocumentIdentification } from './entities/generic-entities.js'
-export type { Membership, CategoryWithPivot, PublicMembershipsResponse } from './entities/membership.js'
+export type {
+  Membership,
+  MembershipCategory,
+  CategoryWithPivot,
+  MembershipsResponse,
+  PublicMembershipsResponse,
+} from './entities/membership.js'
 
 // Categorías
 export type { Category, CategoryWithAlliedCommerces, CategoryWithAlliedCommercesResponse } from './entities/category.js'
