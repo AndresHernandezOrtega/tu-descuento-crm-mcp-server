@@ -4,12 +4,19 @@ import type { ApiErrorResponse } from '@/types/api.js'
 export type ToolErrorCode = 'NOT_FOUND' | 'VALIDATION_ERROR' | 'UPSTREAM_ERROR' | 'RATE_LIMITED' | 'UNKNOWN_ERROR'
 
 /**
- * Respuesta exitosa: resumen corto en content + datos tipados en structuredContent.
- * Evita duplicar el JSON completo en el texto (ahorro de tokens del agente).
+ * Respuesta exitosa: resumen + JSON completo en `content` (lo que el LLM/cliente
+ * MCP suele inyectar al contexto) y los mismos datos tipados en `structuredContent`
+ * (para hosts programáticos / validación con outputSchema).
+ *
+ * La spec MCP indica que si hay structuredContent también SHOULD ir el JSON
+ * serializado en un TextContent — muchos clientes (p. ej. Cursor) solo exponen `content`.
  */
 export function ok(structured: Record<string, unknown>, summary: string): CallToolResult {
   return {
-    content: [{ type: 'text', text: summary }],
+    content: [
+      { type: 'text', text: summary },
+      { type: 'text', text: JSON.stringify(structured, null, 2) },
+    ],
     structuredContent: structured,
   }
 }

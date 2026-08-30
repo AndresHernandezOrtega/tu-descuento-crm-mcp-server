@@ -22,15 +22,22 @@ export interface CreateLeadDto {
   nombre: string
   telefono: string
   origen: string
-  numero_documento?: string
+  numero_documento: string
   email?: string
+}
+
+/**
+ * Respuesta de listado de Leads (GET /leads)
+ */
+export interface LeadsListResponse {
+  leads: Lead[]
 }
 
 /**
  * Respuesta de creación de Lead
  */
 export interface CreateLeadResponse {
-  message: string
+  message?: string
   lead: Lead
 }
 
