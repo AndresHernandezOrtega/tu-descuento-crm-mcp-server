@@ -7,7 +7,7 @@ import type { ApiResponse, MembershipsResponse, MembershipDiscountsResponse } fr
  * Endpoints disponibles:
  * - GET /memberships/public - Membresías con is_venta_publico = true
  * - GET /memberships - Todas las membresías (públicas e internas)
- * - GET /memberships/{membership_id}/discounts - Descuentos de una membresía
+ * - GET /memberships/{membership_id}/discounts - Descuentos M2M de una membresía (no por categorías)
  */
 export class MembershipService extends BaseService {
   /**
@@ -25,7 +25,8 @@ export class MembershipService extends BaseService {
   }
 
   /**
-   * Obtener los descuentos incluidos en una membresía específica
+   * Obtener los descuentos incluidos en una membresía específica.
+   * Relación directa M2M (discounts_memberships); ya no deriva de categorías.
    *
    * @param membershipId - ID de la membresía
    */

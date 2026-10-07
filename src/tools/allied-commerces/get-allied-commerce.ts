@@ -14,13 +14,16 @@ const inputSchema = {
 }
 
 const outputSchema = {
+  id: z.number(),
   code: z.string().optional(),
   razon_social: z.string().optional(),
   telefono: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
   direccion_domicilio_principal: z.string().nullable().optional(),
   descripcion: z.string().nullable().optional(),
+  profile_img: z.string().nullable().optional(),
   discounts: z.array(z.unknown()).optional(),
+  branches: z.array(z.unknown()).optional(),
 }
 
 export function registerGetAlliedCommerce(server: McpServer): void {
@@ -30,7 +33,10 @@ export function registerGetAlliedCommerce(server: McpServer): void {
       title: 'Detalle de comercio aliado',
       description:
         'Obtiene información detallada de un comercio aliado (marca/empresa) que ofrece descuentos: ' +
-        'código, razón social, teléfono, email, dirección, descripción y descuentos. ' +
+        'razón social, contacto, dirección, descripción, descuentos y sucursales. ' +
+        'Los descuentos anidados pueden ser resumen (id, nombre, activo) o detalle según el CRM. ' +
+        'Para saber qué planes/membresías cubren un descuento, revisa memberships en search_discounts ' +
+        'o usa get_membership_discounts por plan. ' +
         'Para obtener el allied_commerce_id usa get_membership_discounts o get_allied_commerces_by_category.',
       inputSchema,
       outputSchema,
@@ -53,22 +59,33 @@ export function registerGetAlliedCommerce(server: McpServer): void {
       }
 
       const commerce = result.data.alliedCommerce
-      const filtered = {
-        code: commerce.code,
-        razon_social: commerce.razon_social,
-        telefono: commerce.telefono,
-        email: commerce.email,
-        direccion_domicilio_principal: commerce.direccion_domicilio_principal,
-        descripcion: commerce.descripcion,
-        discounts: commerce.discounts,
+      if (!commerce) {
+        return fail('NOT_FOUND', `El comercio aliado ${allied_commerce_id} no existe`)
       }
 
-      const discountCount = commerce.discounts?.length ?? 0
+      // No exponer api_token al agente
+      const filtered = {
+        id: commerce.id,
+        code: commerce.code,
+        razon_social: commerce.razon_social,
+        telefono: commerce.telefono ?? null,
+        email: commerce.email ?? null,
+        direccion_domicilio_principal: commerce.direccion_domicilio_principal ?? null,
+        descripcion: commerce.descripcion ?? null,
+        profile_img: commerce.profile_img ?? null,
+        discounts: commerce.discounts ?? [],
+        branches: commerce.branches ?? [],
+      }
+
+      const discountCount = filtered.discounts.length
+      const branchCount = filtered.branches.length
+      const label = commerce.razon_social ?? `Comercio #${commerce.id}`
+      const codePart = commerce.code ? ` (${commerce.code})` : ''
       const summary =
-        `${commerce.razon_social} (${commerce.code})\n` +
-        `Tel: ${commerce.telefono ?? 'N/A'} | Email: ${commerce.email ?? 'N/A'}\n` +
-        `Dirección: ${commerce.direccion_domicilio_principal ?? 'N/A'}\n` +
-        `Descuentos: ${discountCount}`
+        `${label}${codePart}\n` +
+        `Tel: ${filtered.telefono ?? 'N/A'} | Email: ${filtered.email ?? 'N/A'}\n` +
+        `Dirección: ${filtered.direccion_domicilio_principal ?? 'N/A'}\n` +
+        `Descuentos: ${discountCount} | Sucursales: ${branchCount}`
 
       return ok(filtered, summary)
     },

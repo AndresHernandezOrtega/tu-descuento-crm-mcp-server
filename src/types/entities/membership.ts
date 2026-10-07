@@ -18,7 +18,11 @@ export interface Membership {
   categories?: MembershipCategory[]
 }
 
-/** Categoría en listados de membresía: plana (público) o con discounts anidados (todas). */
+/**
+ * Categoría en listados de membresía.
+ * GET /memberships (scope=all) puede anidar discounts en categorías (ejemplo legacy);
+ * no usar como catálogo de beneficios — preferir get_membership_discounts (M2M directo).
+ */
 export interface MembershipCategory {
   id: number
   name: string

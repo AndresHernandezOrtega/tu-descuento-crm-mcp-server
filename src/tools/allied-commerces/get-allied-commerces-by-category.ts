@@ -34,8 +34,9 @@ export function registerGetAlliedCommercesByCategory(server: McpServer): void {
     {
       title: 'Comercios aliados por categoría',
       description:
-        'Obtiene los comercios aliados que ofrecen descuentos en una categoría específica. ' +
-        'Útil cuando el cliente busca descuentos en un rubro (restaurantes, salud, etc.). ' +
+        'Obtiene los comercios aliados que ofrecen descuentos en una categoría (rubro: restaurantes, salud, etc.). ' +
+        'La categoría clasifica comercios/descuentos; no indica qué membresía cubre un beneficio — ' +
+        'para eso usa get_membership_discounts con el membership_id del cliente. ' +
         'Primero obtén el category_id con get_categories. Para detalle de un comercio usa get_allied_commerce.',
       inputSchema,
       outputSchema,

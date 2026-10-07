@@ -10,7 +10,9 @@ const inputSchema = {
     .describe(
       'Alcance del listado. "public" (default): solo membresías abiertas a venta al público ' +
         '(GET /memberships/public). "all": todas las membresías incluyendo planes internos ' +
-        'con is_venta_publico=false (GET /memberships; respuesta más pesada con discounts anidados).',
+        'con is_venta_publico=false (GET /memberships). ' +
+        'Para el inventario de descuentos de un plan concreto usa get_membership_discounts (M2M directo); ' +
+        'no confíes en categories[].discounts anidados en scope="all" (puede estar vacío o desactualizado).',
     ),
   limit: z
     .number()
@@ -36,8 +38,7 @@ export function registerGetMemberships(server: McpServer): void {
         'Lista membresías de Tu Descuento Colombia (precios, impuestos, duración, beneficiarios, categorías). ' +
         'Por defecto scope="public": solo planes en venta al público. ' +
         'Usa scope="all" cuando necesites también membresías internas (is_venta_publico=false) o el catálogo completo. ' +
-        'Con scope="all" el CRM anida discounts en categorías; para descuentos detallados de un plan concreto ' +
-        'prefiere get_membership_discounts con el membership_id.',
+        'El catálogo de descuentos por plan se obtiene con get_membership_discounts, no desde categorías anidadas.',
       inputSchema,
       outputSchema,
       annotations: {

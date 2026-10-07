@@ -39,10 +39,32 @@ export type {
 export type { Category, CategoryWithAlliedCommerces, CategoryWithAlliedCommercesResponse } from './entities/category.js'
 
 // Descuentos
-export type { Discount, DiscountWithPivot, AlliedCommerceSimple, MembershipDiscountsResponse } from './entities/discount.js'
+export type {
+  Discount,
+  DiscountBenefitType,
+  DiscountCategoryRef,
+  DiscountMembershipRef,
+  DiscountAlliedCommerceRef,
+  MembershipDiscount,
+  MembershipDiscountAlliedCommerce,
+  AlliedCommerceDiscountSummary,
+  MembershipDiscountsResponse,
+  DiscountSearchResponse,
+  DiscountSearchCrmEnvelope,
+} from './entities/discount.js'
 
 // Comercios Aliados
-export type { AlliedCommerce, RepresentanteLegal, TypeUser, UserAlliedCommerce, AlliedCommerceResponse } from './entities/allied-commerce.js'
+export type {
+  AlliedCommerce,
+  AlliedCommerceBranch,
+  RepresentanteLegal,
+  TypeUser,
+  UserAlliedCommerce,
+  AlliedCommerceResponse,
+  AlliedCommerceCrmEnvelope,
+  AlliedCommerceSearchResponse,
+  AlliedCommerceSearchCrmEnvelope,
+} from './entities/allied-commerce.js'
 
 // Soporte y Documentación
 export type { SupportLog, User, SupportLogsResponse, CreateOrUpdateSupportLogDto, CreateSupportLogResponse } from './entities/support-logs.js'

@@ -6,6 +6,8 @@ import { registerGetMemberships } from '@tools/memberships/get-memberships.js'
 import { registerGetMembershipDiscounts } from '@tools/memberships/get-membership-discounts.js'
 import { registerGetAlliedCommerce } from '@tools/allied-commerces/get-allied-commerce.js'
 import { registerGetAlliedCommercesByCategory } from '@tools/allied-commerces/get-allied-commerces-by-category.js'
+import { registerSearchAlliedCommerces } from '@tools/allied-commerces/search-allied-commerces.js'
+import { registerSearchDiscounts } from '@tools/discounts/search-discounts.js'
 import { registerCreateLead } from '@tools/leads/create-lead.js'
 import { registerGetSupportLogs } from '@tools/support-logs/get-support-logs.js'
 import { registerCreateSupportLog } from '@tools/support-logs/create-support-log.js'
@@ -24,6 +26,8 @@ const toolRegistrars: ToolRegistrar[] = [
   registerGetMembershipDiscounts,
   registerGetAlliedCommerce,
   registerGetAlliedCommercesByCategory,
+  registerSearchAlliedCommerces,
+  registerSearchDiscounts,
   registerGetSupportLogs,
   registerCreateSupportLog,
   registerCreateLead,

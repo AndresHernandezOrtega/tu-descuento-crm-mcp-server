@@ -1,22 +1,31 @@
-import { Discount } from './discount'
+import type { AlliedCommerceDiscountSummary, Discount } from './discount.js'
+import type { LaravelPaginatedResponse } from '../api.js'
+
+export interface AlliedCommerceBranch {
+  id: number
+  name: string
+  [key: string]: unknown
+}
 
 export interface AlliedCommerce {
   id: number
-  code: string
+  code?: string
   razon_social: string
-  tipo_persona: string
-  numero_identificacion: string
+  tipo_persona?: string
+  numero_identificacion?: string
   digito_verificacion?: number | null
-  telefono: string
-  email: string
-  direccion_domicilio_principal: string
+  telefono?: string | null
+  email?: string | null
+  direccion_domicilio_principal?: string | null
   api_token?: string
-  descripcion: string
+  descripcion?: string | null
+  profile_img?: string | null
   created_at?: string
   updated_at?: string
   representante_legal?: RepresentanteLegal | number
   users?: UserAlliedCommerce[]
-  discounts?: Discount[]
+  discounts?: Array<Discount | AlliedCommerceDiscountSummary>
+  branches?: AlliedCommerceBranch[]
 }
 
 export interface RepresentanteLegal {
@@ -56,6 +65,31 @@ export interface UserAlliedCommerce {
   tokens: any[]
 }
 
+/** Payload estable tras desenvolver el sobre del CRM. */
 export interface AlliedCommerceResponse {
   alliedCommerce: AlliedCommerce
+}
+
+/**
+ * Respuesta cruda de GET /allied_commerces/{id}
+ * (status / message / data / error).
+ */
+export interface AlliedCommerceCrmEnvelope {
+  status: boolean
+  message: string
+  data: { alliedCommerce: AlliedCommerce } | null
+  error: string | null
+}
+
+/** Payload estable tras unwrap de GET /allied_commerces/search */
+export interface AlliedCommerceSearchResponse {
+  alliedCommerces: LaravelPaginatedResponse<AlliedCommerce>
+}
+
+/** Respuesta cruda CRM de GET /allied_commerces/search */
+export interface AlliedCommerceSearchCrmEnvelope {
+  status: boolean
+  message: string
+  data: { alliedCommerces: LaravelPaginatedResponse<AlliedCommerce> } | null
+  error: string | null
 }

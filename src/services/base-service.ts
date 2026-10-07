@@ -57,4 +57,22 @@ export abstract class BaseService extends ApiClient {
 
     return cleanParams
   }
+
+  /**
+   * Serializa query params estilo Laravel: keywords[]=a&keywords[]=b&per_page=15
+   * (Axios por defecto usaría keywords[][0]=a).
+   */
+  protected serializeLaravelArrayParams(params: {
+    keywords: string[]
+    per_page?: number
+  }): string {
+    const search = new URLSearchParams()
+    for (const kw of params.keywords) {
+      search.append('keywords[]', kw)
+    }
+    if (params.per_page !== undefined) {
+      search.append('per_page', String(params.per_page))
+    }
+    return search.toString()
+  }
 }
