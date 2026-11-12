@@ -1,5 +1,5 @@
 import { BaseService } from '@services/base-service.js'
-import type { ApiResponse, MembershipsResponse, MembershipDiscountsResponse } from '@/types/index.js'
+import type { ApiResponse, MembershipsResponse, MembershipResponse, MembershipDiscountsResponse } from '@/types/index.js'
 
 /**
  * Servicio para gestionar membresías del CRM
@@ -32,5 +32,13 @@ export class MembershipService extends BaseService {
    */
   async getMembershipDiscounts(membershipId: number): Promise<ApiResponse<MembershipDiscountsResponse>> {
     return this.get<MembershipDiscountsResponse>(`/memberships/${membershipId}/discounts`)
+  }
+
+  /**
+   * GET /memberships/{membership_id}
+   * Precio, duración, beneficiarios e impuesto. Sin escritura.
+   */
+  async getMembership(membershipId: number): Promise<ApiResponse<MembershipResponse>> {
+    return this.get<MembershipResponse>(`/memberships/${membershipId}`)
   }
 }

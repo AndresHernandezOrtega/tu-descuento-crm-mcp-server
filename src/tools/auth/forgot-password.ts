@@ -23,8 +23,9 @@ export function registerForgotPassword(server: McpServer): void {
     {
       title: 'Solicitar OTP de restauración de contraseña',
       description:
-        'Solicita el envío de un código OTP de restauración de contraseña al email del cliente final. ' +
-        'ADVERTENCIA: Esta acción envía un correo real al cliente. Úsala solo cuando el usuario pida explícitamente restaurar su contraseña de acceso a Tu Descuento.',
+        'Solo si el usuario lo pide explícitamente. Envía un OTP de restauración al email del cliente final. ' +
+        'No cambia la contraseña y este servidor no tiene reset de clave: no inventes una contraseña nueva ni pidas el OTP para guardarlo. ' +
+        'Esta acción envía un correo real.',
       inputSchema,
       outputSchema,
       annotations: {

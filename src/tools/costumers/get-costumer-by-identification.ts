@@ -1,24 +1,37 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { CostumerService } from '@services/costumer-service.js'
-import { ok, mapApiError } from '@tools/tool-result.js'
+import { loadClient, summarizeClient } from '@tools/costumers/client-record.js'
+import { ok } from '@tools/tool-result.js'
 
 const inputSchema = {
-  numero_identificacion: z.string().min(1).describe('Número de documento de identificación del cliente (cédula, NIT, pasaporte) sin puntos, guiones ni espacios. Ejemplo: 1234567890'),
+  numero_identificacion: z
+    .string()
+    .min(1)
+    .describe('Número de documento de identificación del cliente (cédula, NIT, pasaporte) sin puntos, guiones ni espacios. Ejemplo: 1234567890'),
 }
 
 const outputSchema = {
-  costumer: z.unknown().describe('Objeto completo del cliente tal como lo devuelve el CRM'),
+  costumer: z.unknown().describe('Cliente devuelto por el CRM, sin volcar el resumen otra vez en el texto'),
 }
 
-export function registerGetCostumerByIdentification(server: McpServer): void {
+const BASE_DESCRIPTION =
+  'Busca un cliente de Tu Descuento Colombia por número de identificación. ' +
+  'El texto resume estado del contrato vigente, fechas, plan y municipio. El objeto va en structuredContent. ' +
+  'Si no existe, NOT_FOUND: el siguiente paso es create_lead, no listar la base. ' +
+  'Para email o celular sin documento usa find_client.'
+
+export function registerCostumerLookup(
+  server: McpServer,
+  name: 'get_costumer_by_identification' | 'get_customer_by_identification',
+): void {
+  const alias = name === 'get_customer_by_identification'
   server.registerTool(
-    'get_costumer_by_identification',
+    name,
     {
-      title: 'Buscar cliente por identificación',
-      description:
-        'Busca y obtiene la información completa de un cliente registrado en Tu Descuento Colombia usando su número de identificación (cédula, NIT, etc.). ' +
-        'Úsalo cuando necesites datos del cliente, contratos o estado de afiliación.',
+      title: alias ? 'Buscar cliente por identificación (alias)' : 'Buscar cliente por identificación',
+      description: alias
+        ? `Alias de get_costumer_by_identification. Misma función; no reemplaza el nombre histórico. ${BASE_DESCRIPTION}`
+        : `${BASE_DESCRIPTION} El alias get_customer_by_identification llama este mismo handler.`,
       inputSchema,
       outputSchema,
       annotations: {
@@ -28,19 +41,13 @@ export function registerGetCostumerByIdentification(server: McpServer): void {
       },
     },
     async ({ numero_identificacion }) => {
-      const service = new CostumerService()
-      const result = await service.getCostumerByIdentification(numero_identificacion)
-
-      if (!result.success || !result.data) {
-        return mapApiError(result.error, 'No se pudo obtener la información del cliente')
-      }
-
-      const payload = result.data as Record<string, unknown>
-      const c = (payload.costumer ?? payload.client ?? payload) as Record<string, unknown>
-      const name = [c.primer_nombre, c.primer_apellido].filter(Boolean).join(' ') || 'Cliente'
-      const summary = `Cliente encontrado: ${name}\n` + `Identificación: ${c.numero_identificacion ?? numero_identificacion}\n` + `Email: ${c.email ?? 'N/A'} | Celular: ${c.celular ?? 'N/A'}`
-
-      return ok({ costumer: result.data }, summary)
+      const loaded = await loadClient(numero_identificacion)
+      if (!loaded.ok) return loaded.error
+      return ok({ costumer: loaded.envelope }, summarizeClient(loaded.client))
     },
   )
+}
+
+export function registerGetCostumerByIdentification(server: McpServer): void {
+  registerCostumerLookup(server, 'get_costumer_by_identification')
 }

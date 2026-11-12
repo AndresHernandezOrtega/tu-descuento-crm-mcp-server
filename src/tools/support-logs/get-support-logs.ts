@@ -17,6 +17,12 @@ const inputSchema = {
     .optional()
     .describe('Fecha fin del rango (Y-m-d). Ejemplo: 2026-01-31'),
   page: z.number().int().positive().optional().describe('Número de página (default: 1)'),
+  per_page: z.number().int().positive().optional().describe('Tamaño de página que el index del CRM ya acepta (default del CRM: 15).'),
+  email: z.string().email().optional().describe('Filtro de email que el index ya acepta (LIKE).'),
+  handovered: z
+    .boolean()
+    .optional()
+    .describe('true solo casos transferidos a un humano; false solo los que resolvió el bot. El index del CRM ya lo acepta.'),
 }
 
 const outputSchema = {
@@ -38,7 +44,8 @@ export function registerGetSupportLogs(server: McpServer): void {
       description:
         'Obtiene el historial de casos de soporte/ventas de un cliente por número de identificación. ' +
         'Útil para revisar interacciones previas, necesidades, soluciones y consideraciones. ' +
-        'Soporta filtro por rango de fechas y paginación.',
+        'Soporta rango de fechas, page, per_page, email y handovered: el index del CRM ya acepta esos filtros. ' +
+        'El detalle de un caso va en get_support_log.',
       inputSchema,
       outputSchema,
       annotations: {
@@ -47,13 +54,16 @@ export function registerGetSupportLogs(server: McpServer): void {
         openWorldHint: true,
       },
     },
-    async ({ numero_identificacion, created_at_start, created_at_end, page }) => {
+    async ({ numero_identificacion, created_at_start, created_at_end, page, per_page, email, handovered }) => {
       const service = new SupportLogsService()
       const result = await service.getSupportLogs({
         numero_identificacion,
         created_at_start,
         created_at_end,
         page: page || 1,
+        per_page,
+        email,
+        handovered,
       })
 
       if (!result.success || !result.data) {

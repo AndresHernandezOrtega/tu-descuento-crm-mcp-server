@@ -9,6 +9,9 @@ export interface GetSupportLogsParams {
   created_at_start?: string // Formato Y-m-d (ej: 2026-01-01)
   created_at_end?: string // Formato Y-m-d (ej: 2026-01-31)
   page?: number
+  per_page?: number
+  email?: string
+  handovered?: boolean
 }
 
 /**
@@ -32,9 +35,20 @@ export class SupportLogsService extends BaseService {
       created_at_start: params.created_at_start,
       created_at_end: params.created_at_end,
       page: params.page,
+      per_page: params.per_page,
+      email: params.email,
+      handovered:
+        params.handovered === undefined ? undefined : params.handovered ? 'true' : 'false',
     })
 
     return this.get<LaravelPaginatedResponse<SupportLog>>('/support_history_logs', queryParams)
+  }
+
+  /**
+   * GET /support_history_logs/{id}
+   */
+  async getSupportLogById(id: number): Promise<ApiResponse<SupportLog>> {
+    return this.get<SupportLog>(`/support_history_logs/${id}`)
   }
 
   /**

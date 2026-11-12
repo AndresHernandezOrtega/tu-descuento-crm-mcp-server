@@ -27,10 +27,9 @@ const inputSchema = {
 }
 
 const outputSchema = {
-  status: z.enum(['created', 'already_client', 'already_lead']),
+  status: z.literal('created'),
   message: z.string(),
-  lead: z.unknown().optional(),
-  costumer: z.unknown().optional(),
+  lead: z.unknown(),
 }
 
 export function registerCreateLead(server: McpServer): void {
@@ -40,7 +39,8 @@ export function registerCreateLead(server: McpServer): void {
       title: 'Registrar lead / prospecto',
       description:
         'Registra un lead (prospecto) en el CRM cuando un usuario muestra interés en adquirir membresías. ' +
-        'Antes de crear: (1) verifica si ya es cliente registrado; (2) verifica si ya existe un lead con el mismo documento. ' +
+        'Antes de crear: (1) si el documento ya es cliente, responde ALREADY_CLIENT y no crea; ' +
+        '(2) si ya es lead, responde ALREADY_LEAD con el estado y no crea. ' +
         'El campo origen DEBE describir canal de comunicación, intención/origen de interés (pregunta inicial) ' +
         'y estado para recontacto humano (muy interesado, interés leve, objeción fuerte, etc.). ' +
         'Requiere nombre, telefono, origen y numero_documento. email es opcional.',
@@ -62,27 +62,16 @@ export function registerCreateLead(server: McpServer): void {
 
       if (costumerResult.success && costumerResult.data) {
         const payload = costumerResult.data as Record<string, unknown>
-        const c = (payload.costumer ?? payload.client ?? payload) as Record<string, unknown>
+        const nested = payload.client ?? payload.costumer ?? payload
+        const c = (nested && typeof nested === 'object' ? nested : payload) as Record<string, unknown>
         const name =
-          [c.primer_nombre, c.primer_apellido].filter(Boolean).join(' ') ||
+          [c.primer_nombre, c.primer_apellido].filter((part) => typeof part === 'string' && part).join(' ') ||
           (typeof c.nombre === 'string' ? c.nombre : 'Cliente')
-        const message =
-          'Este documento ya está registrado como cliente en la plataforma. No se puede crear como lead.'
-        const summary =
-          `${message}\n` +
-          `Cliente: ${name}\n` +
-          `Identificación: ${c.numero_identificacion ?? numeroDocumento}\n` +
-          `Email: ${c.email ?? 'N/A'} | Celular: ${c.celular ?? 'N/A'}`
-
-        const structured = {
-          status: 'already_client' as const,
-          message,
-          costumer: costumerResult.data,
-        }
-        return {
-          ...ok(structured, summary),
-          isError: true,
-        }
+        return fail(
+          'ALREADY_CLIENT',
+          `El documento ${numeroDocumento} ya es cliente (${name}). No se creó un lead.`,
+          'Consulta el estado con get_client_membership_status o el perfil con get_costumer_by_identification.',
+        )
       }
 
       if (costumerResult.error?.statusCode !== 404) {
@@ -99,12 +88,11 @@ export function registerCreateLead(server: McpServer): void {
 
       const existingLead = leadsResult.data.leads?.[0]
       if (existingLead) {
-        const message = 'Este lead ya ha sido registrado anteriormente.'
-        const summary =
-          `${message}\n` +
-          `Lead #${existingLead.id}: ${existingLead.nombre} | Tel: ${existingLead.telefono} | Estado: ${existingLead.estado}`
-
-        return ok({ status: 'already_lead', message, lead: existingLead }, summary)
+        return fail(
+          'ALREADY_LEAD',
+          `El documento ${numeroDocumento} ya es lead #${existingLead.id} (${existingLead.nombre}), estado: ${existingLead.estado}. No se creó otro.`,
+          'Consulta el prospecto con get_lead. No actualices el lead por PUT.',
+        )
       }
 
       // 3) Crear lead
