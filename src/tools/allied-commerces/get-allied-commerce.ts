@@ -37,7 +37,8 @@ export function registerGetAlliedCommerce(server: McpServer): void {
         'Los descuentos anidados pueden ser resumen (id, nombre, activo) o detalle según el CRM. ' +
         'Para saber qué planes/membresías cubren un descuento, revisa memberships en search_discounts ' +
         'o usa get_membership_discounts por plan. ' +
-        'Para obtener el allied_commerce_id usa get_membership_discounts o get_allied_commerces_by_category.',
+        'Para obtener el allied_commerce_id usa get_membership_discounts o get_allied_commerces_by_category. ' +
+        'El resumen lista sucursales y su municipio. No incluye api_token.',
       inputSchema,
       outputSchema,
       annotations: {
@@ -78,14 +79,28 @@ export function registerGetAlliedCommerce(server: McpServer): void {
       }
 
       const discountCount = filtered.discounts.length
-      const branchCount = filtered.branches.length
+      const branches = Array.isArray(filtered.branches) ? filtered.branches : []
+      const branchLines = branches.slice(0, 8).map((branch) => {
+        const record = branch as Record<string, unknown>
+        const name = typeof record.name === 'string' && record.name.trim() ? record.name : `Sucursal #${record.id ?? '?'}`
+        const muni = record.municipalitie
+        const municipio =
+          muni && typeof muni === 'object' && typeof (muni as { name?: unknown }).name === 'string'
+            ? (muni as { name: string }).name
+            : record.municipalitie_id != null
+              ? `municipio #${record.municipalitie_id}`
+              : 'sin municipio'
+        return `- ${name} — ${municipio}`
+      })
       const label = commerce.razon_social ?? `Comercio #${commerce.id}`
       const codePart = commerce.code ? ` (${commerce.code})` : ''
       const summary =
         `${label}${codePart}\n` +
         `Tel: ${filtered.telefono ?? 'N/A'} | Email: ${filtered.email ?? 'N/A'}\n` +
         `Dirección: ${filtered.direccion_domicilio_principal ?? 'N/A'}\n` +
-        `Descuentos: ${discountCount} | Sucursales: ${branchCount}`
+        `Descuentos: ${discountCount}\n` +
+        (branchLines.length ? `Sucursales (${branches.length}):\n${branchLines.join('\n')}` : 'Sucursales: ninguna') +
+        (branches.length > 8 ? `\n… y ${branches.length - 8} sucursales más` : '')
 
       return ok(filtered, summary)
     },

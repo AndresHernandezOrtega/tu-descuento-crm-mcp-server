@@ -25,13 +25,25 @@ export type { Lead, CreateLeadDto, UpdateLeadDto, CreateLeadResponse, LeadsListR
 
 // Clientes
 export type { Costumer } from './entities/costumer.js'
-export type { Contract } from './entities/contract.js'
-export type { Municipalitie, TypeDocumentIdentification } from './entities/generic-entities.js'
+export type {
+  Contract,
+  ContractBeneficiary,
+  ContractBeneficiaryClient,
+  ContractBeneficiariesData,
+  ContractBeneficiariesEnvelope,
+} from './entities/contract.js'
+export type {
+  Municipalitie,
+  TypeDocumentIdentification,
+  Department,
+  ClientCreationCatalog,
+} from './entities/generic-entities.js'
 export type {
   Membership,
   MembershipCategory,
   CategoryWithPivot,
   MembershipsResponse,
+  MembershipResponse,
   PublicMembershipsResponse,
 } from './entities/membership.js'
 
@@ -64,7 +76,15 @@ export type {
   AlliedCommerceCrmEnvelope,
   AlliedCommerceSearchResponse,
   AlliedCommerceSearchCrmEnvelope,
+  AlliedCommerceBranchesData,
+  AlliedCommerceBranchesEnvelope,
+  AlliedCommerceCreationCatalog,
 } from './entities/allied-commerce.js'
+
+export type {
+  PaymentByReferenceData,
+  PaymentByReferenceEnvelope,
+} from './entities/membership-purchase.js'
 
 // Soporte y Documentación
 export type { SupportLog, User, SupportLogsResponse, CreateOrUpdateSupportLogDto, CreateSupportLogResponse } from './entities/support-logs.js'

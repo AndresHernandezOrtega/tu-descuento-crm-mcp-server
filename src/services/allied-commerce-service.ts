@@ -1,6 +1,8 @@
 import { BaseService } from '@services/base-service.js'
 import type {
   ApiResponse,
+  AlliedCommerceBranch,
+  AlliedCommerceBranchesEnvelope,
   AlliedCommerceCrmEnvelope,
   AlliedCommerceResponse,
   AlliedCommerceSearchCrmEnvelope,
@@ -89,6 +91,46 @@ export class AlliedCommerceService extends BaseService {
     return {
       success: true,
       data: { alliedCommerces },
+    }
+  }
+
+  /**
+   * GET /allied_commerces/{id}/branches.
+   * El index no filtra por municipio; el tool aplica municipalitie_id en memoria.
+   * No devuelve el comercio anidado (puede traer usuarios o api_token).
+   */
+  async getBranches(alliedCommerceId: number): Promise<ApiResponse<{ branches: AlliedCommerceBranch[] }>> {
+    const result = await this.get<AlliedCommerceBranchesEnvelope>(
+      `/allied_commerces/${alliedCommerceId}/branches`,
+    )
+
+    if (!result.success || !result.data) {
+      return {
+        success: false,
+        error: result.error ?? {
+          error: 'UnknownError',
+          message: `No se pudieron obtener las sucursales del comercio ${alliedCommerceId}`,
+        },
+      }
+    }
+
+    const envelope = result.data
+    const branches = envelope.data?.branches
+
+    if (!envelope.status || !branches) {
+      return {
+        success: false,
+        error: {
+          error: envelope.error || 'NotFound',
+          message: envelope.message || `No se encontraron sucursales del comercio ${alliedCommerceId}`,
+          statusCode: 404,
+        },
+      }
+    }
+
+    return {
+      success: true,
+      data: { branches },
     }
   }
 }

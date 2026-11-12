@@ -1,24 +1,40 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import type { ApiErrorResponse } from '@/types/api.js'
 
-export type ToolErrorCode = 'NOT_FOUND' | 'VALIDATION_ERROR' | 'UPSTREAM_ERROR' | 'RATE_LIMITED' | 'UNKNOWN_ERROR'
+export type ToolErrorCode =
+  | 'NOT_FOUND'
+  | 'VALIDATION_ERROR'
+  | 'UPSTREAM_ERROR'
+  | 'RATE_LIMITED'
+  | 'UNKNOWN_ERROR'
+  | 'NO_ACTIVE_MEMBERSHIP'
+  | 'ALREADY_CLIENT'
+  | 'ALREADY_LEAD'
+  | 'UNKNOWN_TOOL_ARGS'
 
 /**
- * Respuesta exitosa: resumen + JSON completo en `content` (lo que el LLM/cliente
- * MCP suele inyectar al contexto) y los mismos datos tipados en `structuredContent`
- * (para hosts programáticos / validación con outputSchema).
- *
- * La spec MCP indica que si hay structuredContent también SHOULD ir el JSON
- * serializado en un TextContent — muchos clientes (p. ej. Cursor) solo exponen `content`.
+ * Respuesta exitosa: el resumen va en `content` (contexto del modelo) y el
+ * payload en `structuredContent`. No se duplica el JSON en `content`.
  */
 export function ok(structured: Record<string, unknown>, summary: string): CallToolResult {
   return {
-    content: [
-      { type: 'text', text: summary },
-      { type: 'text', text: JSON.stringify(structured, null, 2) },
-    ],
+    content: [{ type: 'text', text: summary }],
     structuredContent: structured,
   }
+}
+
+/**
+ * Rechaza argumentos que el tool declara solo para detectarlos (query, city, etc.).
+ * Si Zod los elimina por ser desconocidos, el modelo no puede recibir UNKNOWN_TOOL_ARGS.
+ */
+export function rejectUnknownArgs(values: Record<string, unknown>, hint: string): CallToolResult | null {
+  const names = Object.entries(values)
+    .filter(([, value]) => value !== undefined)
+    .map(([key]) => key)
+  if (names.length === 0) {
+    return null
+  }
+  return fail('UNKNOWN_TOOL_ARGS', `Argumentos no soportados: ${names.join(', ')}.`, hint)
 }
 
 /**

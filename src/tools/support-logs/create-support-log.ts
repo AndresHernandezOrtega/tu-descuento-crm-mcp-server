@@ -8,12 +8,12 @@ const inputSchema = {
     .string()
     .min(1)
     .describe('Número de documento del cliente (requerido, sin puntos ni guiones)'),
-  nombre: z.string().optional().describe('Nombre completo del cliente (opcional)'),
-  email: z.string().email().optional().describe('Correo del cliente (opcional)'),
-  telefono: z.string().optional().describe('Teléfono del cliente (opcional)'),
+  nombre: z.string().min(1).describe('Nombre completo del cliente (obligatorio)'),
+  email: z.string().email().describe('Correo del cliente (obligatorio)'),
+  telefono: z.string().min(1).describe('Teléfono del cliente (obligatorio). Ejemplo: 3001234567'),
   handovered: z
     .boolean()
-    .describe('true si el caso se transfirió a un agente humano; false si lo resolvió el bot'),
+    .describe('true solo si hubo una transferencia real a un agente humano. false si el bot resolvió el caso'),
   necesidad: z.string().min(1).describe('Qué solicitó o necesitó el cliente'),
   solucion: z.string().min(1).describe('Solución brindada al cliente'),
   consideraciones: z.string().min(1).describe('Notas de seguimiento o estado del caso'),
@@ -31,9 +31,10 @@ export function registerCreateSupportLog(server: McpServer): void {
     {
       title: 'Registrar / actualizar caso de soporte',
       description:
-        'Registra o actualiza un caso de soporte/ventas. Si ya existe un caso del día para el mismo ' +
-        'número de identificación, actualiza ese caso; si no, crea uno nuevo. ' +
-        'IMPORTANTE: úsalo al finalizar cada interacción significativa con el cliente.',
+        'Registra o actualiza un caso de soporte/ventas. nombre, email y telefono son obligatorios, ' +
+        'igual que el alta del CRM. handovered=true solo si hubo una transferencia real a un humano; ' +
+        'si el bot resolvió el caso, envía false. Si ya existe un caso del día para el mismo documento, ' +
+        'el CRM actualiza ese caso. Úsalo al cerrar la interacción, no para simular una transferencia.',
       inputSchema,
       outputSchema,
       annotations: {
@@ -48,12 +49,23 @@ export function registerCreateSupportLog(server: McpServer): void {
         return fail('VALIDATION_ERROR', 'handovered es requerido y debe ser boolean (true/false)')
       }
 
+      const nombre = args.nombre.trim()
+      const email = args.email.trim()
+      const telefono = args.telefono.trim()
+      if (!nombre || !email || !telefono) {
+        return fail(
+          'VALIDATION_ERROR',
+          'nombre, email y telefono son obligatorios.',
+          'Pídelos antes de cerrar el caso. handovered=true solo si hubo transferencia real.',
+        )
+      }
+
       const service = new SupportLogsService()
       const result = await service.createOrUpdateSupportLog({
         numero_identificacion: args.numero_identificacion,
-        nombre: args.nombre,
-        email: args.email,
-        telefono: args.telefono,
+        nombre,
+        email,
+        telefono,
         handovered: args.handovered,
         necesidad: args.necesidad,
         solucion: args.solucion,

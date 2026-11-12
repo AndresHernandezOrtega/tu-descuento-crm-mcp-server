@@ -46,5 +46,10 @@ export interface MembershipsResponse {
   memberships: Membership[]
 }
 
+/** GET /memberships/{membership_id} */
+export interface MembershipResponse {
+  membership: Membership
+}
+
 /** Alias histórico; ambos endpoints usan el mismo wrapper. */
 export type PublicMembershipsResponse = MembershipsResponse

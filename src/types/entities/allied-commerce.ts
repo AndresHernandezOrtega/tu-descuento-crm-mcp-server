@@ -1,4 +1,5 @@
 import type { AlliedCommerceDiscountSummary, Discount } from './discount.js'
+import type { TypeDocumentIdentification } from './generic-entities.js'
 import type { LaravelPaginatedResponse } from '../api.js'
 
 export interface AlliedCommerceBranch {
@@ -92,4 +93,25 @@ export interface AlliedCommerceSearchCrmEnvelope {
   message: string
   data: { alliedCommerces: LaravelPaginatedResponse<AlliedCommerce> } | null
   error: string | null
+}
+
+/** data de GET /allied_commerces/{id}/branches */
+export interface AlliedCommerceBranchesData {
+  alliedCommerce?: AlliedCommerce
+  branches: AlliedCommerceBranch[]
+}
+
+export interface AlliedCommerceBranchesEnvelope {
+  status: boolean
+  message: string
+  data: AlliedCommerceBranchesData | null
+  error: string | null
+}
+
+/**
+ * data de GET /allied_commerces/create.
+ * Solo catálogo de formulario (tipos de documento), no el listado de comercios.
+ */
+export interface AlliedCommerceCreationCatalog {
+  document_types: TypeDocumentIdentification[]
 }

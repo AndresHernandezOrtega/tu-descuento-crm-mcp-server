@@ -7,6 +7,8 @@ import { config } from '@config/config.js'
 import { authMiddleware } from '@/middleware/auth.js'
 import { createRateLimitMiddleware } from '@/middleware/rate-limit.js'
 import { registerAllTools } from '@tools/index.js'
+import { registerAllPrompts } from '@prompts/index.js'
+import { registerFormResources, startFormCatalogHydration } from '@resources/index.js'
 
 interface SessionEntry {
   transport: StreamableHTTPServerTransport
@@ -58,11 +60,15 @@ export class MCPServer {
       {
         capabilities: {
           tools: {},
+          prompts: {},
+          resources: {},
         },
       },
     )
 
     registerAllTools(server)
+    registerAllPrompts(server)
+    registerFormResources(server)
     return server
   }
 
@@ -259,6 +265,7 @@ export class MCPServer {
   }
 
   public async start(): Promise<void> {
+    startFormCatalogHydration()
     return new Promise((resolve) => {
       this.app.listen(config.port, () => {
         console.log(`🚀 MCP Server iniciado en puerto ${config.port}`)

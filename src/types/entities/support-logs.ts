@@ -62,10 +62,10 @@ export interface SupportLogsResponse {
  * DTO para crear o actualizar un log de soporte
  */
 export interface CreateOrUpdateSupportLogDto {
-  nombre?: string
+  nombre: string
   numero_identificacion: string
-  email?: string
-  telefono?: string
+  email: string
+  telefono: string
   handovered: boolean
   necesidad: string
   solucion: string

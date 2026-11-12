@@ -1,7 +1,11 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { MembershipService } from '@services/membership-service.js'
-import { ok, mapApiError, applyLimit } from '@tools/tool-result.js'
+import { ok, mapApiError, applyLimit, rejectUnknownArgs } from '@tools/tool-result.js'
+
+const COVERAGE_HINT =
+  'Este tool no filtra por texto ni por ciudad. Los municipios están en el resource tudescuento://forms/client-creation. ' +
+  'Para sucursales usa search_allied_commerces y get_commerce_branches.'
 
 const inputSchema = {
   scope: z
@@ -20,6 +24,17 @@ const inputSchema = {
     .positive()
     .optional()
     .describe('Máximo de membresías a devolver (opcional). Si se omite, se devuelven todas.'),
+  query: z
+    .unknown()
+    .optional()
+    .describe('NO ENVIAR. Este tool no busca por texto. Si se envía, responde UNKNOWN_TOOL_ARGS.'),
+  city: z
+    .unknown()
+    .optional()
+    .describe(
+      'NO ENVIAR. No existe filtro city. Si se envía, responde UNKNOWN_TOOL_ARGS. ' +
+        'Municipios: resource tudescuento://forms/client-creation. Sucursales: get_commerce_branches.',
+    ),
 }
 
 const outputSchema = {
@@ -38,7 +53,9 @@ export function registerGetMemberships(server: McpServer): void {
         'Lista membresías de Tu Descuento Colombia (precios, impuestos, duración, beneficiarios, categorías). ' +
         'Por defecto scope="public": solo planes en venta al público. ' +
         'Usa scope="all" cuando necesites también membresías internas (is_venta_publico=false) o el catálogo completo. ' +
-        'El catálogo de descuentos por plan se obtiene con get_membership_discounts, no desde categorías anidadas.',
+        'El catálogo de descuentos por plan se obtiene con get_membership_discounts, no desde categorías anidadas. ' +
+        'No filtra por query ni por city: esos argumentos se rechazan con UNKNOWN_TOOL_ARGS. ' +
+        'La cobertura por municipio usa el resource tudescuento://forms/client-creation y get_commerce_branches.',
       inputSchema,
       outputSchema,
       annotations: {
@@ -47,7 +64,10 @@ export function registerGetMemberships(server: McpServer): void {
         openWorldHint: true,
       },
     },
-    async ({ scope, limit }) => {
+    async ({ scope, limit, query, city }) => {
+      const rejected = rejectUnknownArgs({ query, city }, COVERAGE_HINT)
+      if (rejected) return rejected
+
       const resolvedScope = scope ?? 'public'
       const service = new MembershipService()
       const result =
@@ -73,7 +93,7 @@ export function registerGetMemberships(server: McpServer): void {
 
       const scopeLabel = resolvedScope === 'all' ? 'todas' : 'públicas'
       const summary =
-        `Membresías (${scopeLabel}): ${items.length} de ${total}${truncated ? ' (truncado)' : ''}\n` +
+        `Membresías (${scopeLabel}): ${items.length} de ${total}${truncated ? ' (truncado)' : ''}. Sin filtro por ciudad.\n` +
         lines.join('\n')
 
       return ok({ memberships: items, total, truncated, scope: resolvedScope }, summary)
